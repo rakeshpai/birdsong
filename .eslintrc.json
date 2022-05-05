@@ -1,0 +1,6 @@
+{
+  "extends": "rakeshpai",
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  }
+}

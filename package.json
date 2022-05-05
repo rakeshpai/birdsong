@@ -1,0 +1,17 @@
+{
+  "name": "birdsong",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "tsc": "tsc",
+    "start": "ts-node client.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint-config-rakeshpai": "^1.0.3",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.4"
+  }
+}
