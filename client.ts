@@ -12,6 +12,8 @@ const createService = <T>() => new Proxy({}, {
 
 const service = createService<MyServiceType>();
 
-const result = service.add(1, 2);
+const r1 = service.add(1, 2);
+const r2 = service.addDates(new Date(), new Date());
+const r3 = service.concat('a', 'b');
 
-result.then(x => console.log(x));
+Promise.all([r1, r2, r3]).then(x => console.log(x));

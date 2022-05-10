@@ -3,25 +3,24 @@ const concat = (a: string, b: string) => a + b;
 const addDates = (x: Date, y: Date) => x.getTime() + y.getTime();
 
 type RPCSerializableValue =
+    | { [property: string]: RPCSerializableValue }
+    | readonly RPCSerializableValue[]
     | string
     | number
     | boolean
-    | { [x: string]: RPCSerializableValue }
-    | RPCSerializableValue[];
+    | null;
 
-type RPCFunction = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (...args: any[]): RPCSerializableValue | Promise<RPCSerializableValue>;
-};
+type Promisify<T> = T extends Promise<infer U> ? Promise<U> : Promise<T>;
+
+type RPCFunction = (...args: RPCSerializableValue[]) => RPCSerializableValue | Promise<RPCSerializableValue>;
 
 type RPCService<T extends Record<string, RPCFunction>> = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  readonly [P in keyof T]: T[P] extends (...args: any[]) => Promise<infer U>
+  readonly [P in keyof T]: T[P] extends (...args: RPCSerializableValue[]) => Promise<infer U>
     ? Parameters<T[P]> extends RPCSerializableValue[]
-      ? (...args: Parameters<T[P]>) => Promise<U>
+      ? (...args: Parameters<T[P]>) => Promisify<U>
       : never
     : Parameters<T[P]> extends RPCSerializableValue[]
-      ? (...args: Parameters<T[P]>) => Promise<ReturnType<T[P]>>
+      ? (...args: Parameters<T[P]>) => Promisify<ReturnType<T[P]>>
       : never
 };
 
