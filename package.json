@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "tsc": "tsc",
-    "start": "ts-node client.ts"
+    "start": "ts-node server2.ts"
   },
   "author": "",
   "license": "ISC",
