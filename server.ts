@@ -6,7 +6,8 @@ type RPCSerializableValue =
     | string
     | number
     | boolean
-    | null;
+    | null
+    | void;
 
 type ResolverArgs<Context, Input extends RPCSerializableValue> = {
   input: Input;
@@ -62,7 +63,7 @@ const withContext = <Context>(contextCreator: () => MaybeAsync<Context>) => {
 type ClientType<T> = {
   [methodName in keyof T]: (
     T[methodName] extends ServiceMethodDescrptor<any, infer Input, infer Output>
-      ? (a: Input) => Promise<Output>
+      ? (input: Input) => Promise<Output>
       : never
   );
 };
@@ -80,7 +81,7 @@ const service = {
     }
   ),
   getUserTypes: query(
-    () => null,
+    () => {},
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ({ input, context }): 'a' | 'b' => 'a'
   )
@@ -102,4 +103,4 @@ type Client = ClientType<typeof service>;
 
 const c = createClient<Client>();
 c.getUser({ userId: '1' });
-c.getUserTypes(null);
+c.getUserTypes();
