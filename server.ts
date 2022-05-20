@@ -8,73 +8,60 @@ type RPCSerializableValue =
     | boolean
     | null;
 
-type ResolverArgs<Input extends RPCSerializableValue, Context> = {
+type ResolverArgs<Context, Input extends RPCSerializableValue> = {
   input: Input;
   context: Context;
 };
 
 type Validator<Input extends RPCSerializableValue> = (value: unknown) => MaybeAsync<Input>;
 type Resolver<
+  Context,
   Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue,
-  Context
-> = (x: ResolverArgs<Input, Context>) => MaybeAsync<Output>;
+  Output extends RPCSerializableValue
+> = (x: ResolverArgs<Context, Input>) => MaybeAsync<Output>;
 
 type OpArgs<
+  Context,
   Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue,
-  Context
+  Output extends RPCSerializableValue
 > = {
   validator: Validator<Input>;
-  resolve: Resolver<Input, Output, Context>;
+  resolve: Resolver<Context, Input, Output>;
+  contextCreator: () => MaybeAsync<Context>;
 };
 
 type ServiceMethodDescrptor<
-  Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue,
-  Context
-> =
-  OpArgs<Input, Output, Context> & { type: 'query' | 'mutation' };
-
-const createDescriptor = (type: 'query' | 'mutation') => (
-  <Input extends RPCSerializableValue, Output extends RPCSerializableValue, Context>(
-    validator: Validator<Input>,
-    resolve: Resolver<Input, Output, Context>
-  ) => ({
-    type, validator, resolve
-  })
-);
-
-const query = createDescriptor('query');
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const mutation = createDescriptor('mutation');
-
-const createService = <
-  Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue,
   Context,
-  MethodNames extends string
->(
-  createContext: () => Context,
-  methods: Record<MethodNames, ServiceMethodDescrptor<Input, Output, Context>>
-) => ({
-  createContext, methods
-});
+  Input extends RPCSerializableValue,
+  Output extends RPCSerializableValue
+> =
+  OpArgs<Context, Input, Output> & { type: 'query' | 'mutation' };
 
-type Service<Context, SMD, methodName extends string> = {
-  createContext: () => Context;
-  methods: Record<
-    methodName,
-    SMD extends ServiceMethodDescrptor<infer Input, infer Output, Context>
-      ? ServiceMethodDescrptor<Input, Output, Context>
-      : never
-  >;
+const withContext = <Context>(contextCreator: () => MaybeAsync<Context>) => {
+  const createDescriptor = (type: 'query' | 'mutation') => (
+    <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+      validator: Validator<Input>,
+      resolve: Resolver<Context, Input, Output>
+    ): ServiceMethodDescrptor<Context, Input, Output> => ({
+      type, validator, resolve, contextCreator
+    })
+  );
+
+  const query = createDescriptor('query');
+  const mutation = createDescriptor('mutation');
+
+  return { query, mutation };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ClientType<T extends Service<Context, ServiceMethodDescrptor<any, any, Context>, string>> = {
-  [methodName in keyof T['methods']]: (
-    T['methods'][methodName] extends ServiceMethodDescrptor<infer Input, infer Output, Context>
+// type Methods<Context, T> = {
+//   [key in keyof T]: T[key] extends ServiceMethodDescrptor<Context, infer Input, infer Output>
+//     ? ServiceMethodDescrptor<Context, Input, Output>
+//     : never
+// };
+
+type ClientType<T> = {
+  [methodName in keyof T]: (
+    T[methodName] extends ServiceMethodDescrptor<any, infer Input, infer Output>
       ? (a: Input) => Promise<Output>
       : never
   );
@@ -82,15 +69,22 @@ type ClientType<T extends Service<Context, ServiceMethodDescrptor<any, any, Cont
 
 type Context = { isLoggedIn: boolean };
 
-const service = createService(() => ({ isLoggedIn: true }), {
+const { query } = withContext<Context>(() => ({ isLoggedIn: true }));
+
+const service = {
   getUser: query(
     value => ({ userId: String(value || '') }),
     ({ input, context }) => {
       console.log(input, context.isLoggedIn);
       return ({ name: 'John', surname: 'Doe' });
     }
+  ),
+  getUserTypes: query(
+    () => null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ({ input, context }): 'a' | 'b' => 'a'
   )
-});
+};
 
 // Client
 
@@ -108,3 +102,4 @@ type Client = ClientType<typeof service>;
 
 const c = createClient<Client>();
 c.getUser({ userId: '1' });
+c.getUserTypes(null);
