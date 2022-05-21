@@ -1,13 +1,6 @@
-type MaybeAsync<T> = T | Promise<T>;
+import type { RPCSerializableValue } from './shared';
 
-type RPCSerializableValue =
-    | { [property: string]: RPCSerializableValue }
-    | readonly RPCSerializableValue[]
-    | string
-    | number
-    | boolean
-    | null
-    | void;
+type MaybeAsync<T> = T | Promise<T>;
 
 type ResolverArgs<Context, Input extends RPCSerializableValue> = {
   input: Input;
