@@ -129,13 +129,10 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
 
   type MethodsClientType = {
     [key in keyof Service]:
-    Service[key] extends MethodWithoutContext
+    Service[key] extends MethodWithoutContext | MethodForContext<Context>
       ? (input: ReturnType<ReturnType<Service[key]>['validator']>)
       => Promise<ReturnType<ReturnType<Service[key]>['resolver']>>
-      : Service[key] extends MethodForContext<Context>
-        ? (input: ReturnType<ReturnType<Service[key]>['validator']>)
-        => Promise<ReturnType<ReturnType<Service[key]>['resolver']>>
-        : never
+      : never
   };
 
   return {
