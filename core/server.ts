@@ -1,6 +1,4 @@
-import type { RPCSerializableValue } from './shared';
-
-type MaybeAsync<T> = T | Promise<T>;
+import type { MaybeAsync, RPCSerializableValue } from './shared';
 
 type ResolverArgs<Context, Input extends RPCSerializableValue> = {
   input: Input;
@@ -14,6 +12,8 @@ type Resolver<
   Output extends RPCSerializableValue
 > = (x: ResolverArgs<Context, Input>) => MaybeAsync<Output>;
 
+type ContextCreator<Context> = () => MaybeAsync<Context>;
+
 type ServiceMethodDescrptor<
   Context,
   Input extends RPCSerializableValue,
@@ -22,10 +22,10 @@ type ServiceMethodDescrptor<
   type: 'query' | 'mutation';
   validator: Validator<Input>;
   resolve: Resolver<Context, Input, Output>;
-  contextCreator: () => MaybeAsync<Context>;
+  contextCreator: ContextCreator<Context>;
 };
 
-export const withContext = <Context>(contextCreator: () => MaybeAsync<Context>) => {
+export const withContext = <Context>(contextCreator: ContextCreator<Context>) => {
   const createDescriptor = (type: 'query' | 'mutation') => (
     <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
       validator: Validator<Input>,
@@ -40,12 +40,6 @@ export const withContext = <Context>(contextCreator: () => MaybeAsync<Context>) 
 
   return { query, mutation };
 };
-
-// type Methods<Context, T> = {
-//   [key in keyof T]: T[key] extends ServiceMethodDescrptor<Context, infer Input, infer Output>
-//     ? ServiceMethodDescrptor<Context, Input, Output>
-//     : never
-// };
 
 export type ClientType<T> = {
   [methodName in keyof T]: (
