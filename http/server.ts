@@ -1,23 +1,17 @@
 import type { MaybeAsync, RPCSerializableValue, Validator } from '../core/shared';
-
-type RuntimeHelpers = {
-  setCookie: (name: string, value: string) => void;
-  methodName: string;
-  input: unknown;
-  readCookie: (name: string) => string | undefined;
-};
+import type { Environment, EnvironmentHelpers } from './types';
 
 type HttpResolverArgsWithContext<
   Context,
   Input extends RPCSerializableValue,
 > = [
   input: Input,
-  helpers: Pick<RuntimeHelpers, 'setCookie' | 'readCookie'> & { context: Context }
+  helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'> & { context: Context }
 ];
 
 type HttpResolverArgsWithoutContext<
   Input extends RPCSerializableValue,
-> = [input: Input, helpers: Pick<RuntimeHelpers, 'setCookie' | 'readCookie'>];
+> = [input: Input, helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'>];
 
 type HttpResolverWithContext<
   Context,
@@ -69,7 +63,7 @@ const methodWithoutContext = <Input extends RPCSerializableValue, Output extends
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> = {
-  createContext: (helpers: Omit<RuntimeHelpers, 'methodName' | 'input'>) => Context;
+  createContext: (helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'>) => Context;
   service: (method: MethodForContext<Context>) => (
     Service extends {
       [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithContext<Context, infer Input, infer Output>
@@ -79,7 +73,7 @@ type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> =
       ? Service
       : never
   );
-  environment: (...args: RuntimeArgs) => RuntimeHelpers;
+  environment: Environment<RuntimeArgs>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,12 +87,12 @@ type HttpServerOptionsWithoutContext<Service, RuntimeArgs extends any[]> = {
       ? Service
       : never
   );
-  environment: (...args: RuntimeArgs) => RuntimeHelpers;
+  environment: Environment<RuntimeArgs>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HttpServerReturnType<RuntimeArgs extends any[], Methods> = {
-  server: (...args: RuntimeArgs) => MaybeAsync<RPCSerializableValue>;
+  server: (...args: RuntimeArgs) => void;
   methods: {
     [methodName in keyof Methods]:
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,23 +132,44 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
   return {
     server: async (...args: RuntimeArgs) => {
       const {
-        methodName, input, setCookie, readCookie
+        methodDetails, setCookie, readCookie, sendError, sendResponse
       } = options.environment(...args);
+      const md = await methodDetails();
+      const { name: methodName, input } = md;
       const method = methods[methodName as keyof typeof methods];
+
       if (!method) {
-        throw new Error(`Method '${methodName}' not found`);
+        return sendError(new Error(`Method '${methodName}' not found`), 400);
       }
 
-      return ('createContext' in options)
-        ? method.resolver(await method.validator(input), {
-          context: options.createContext({ setCookie, readCookie }),
-          setCookie,
-          readCookie
-        })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        : (method.resolver as HttpResolverWithoutContext<any, any>)(await method.validator(input), {
-          setCookie, readCookie
-        });
+      let validatedInput: RPCSerializableValue;
+      try {
+        // eslint-disable-next-line prefer-const
+        validatedInput = await method.validator(input);
+      } catch (e) {
+        return sendError(e as Error, 400);
+      }
+
+      let output: RPCSerializableValue;
+      try {
+        // eslint-disable-next-line prefer-const
+        output = await (
+          ('createContext' in options)
+            ? method.resolver(validatedInput, {
+              context: options.createContext({ setCookie, readCookie }),
+              setCookie,
+              readCookie
+            })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            : (method.resolver as HttpResolverWithoutContext<any, any>)(
+              validatedInput,
+              { setCookie, readCookie }
+            )
+        );
+      } catch (e) {
+        return sendError(e as Error, 500);
+      }
+      sendResponse(output);
     },
     methods: {} as MethodsClientType
   };

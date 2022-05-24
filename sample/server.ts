@@ -1,7 +1,8 @@
+import nodejs from '../http/environments/node';
 import type { ClientType } from '../http/server';
 import httpServer from '../http/server';
 
-const { methods } = httpServer({
+const { methods, server } = httpServer({
   createContext: () => ({ isLoggedIn: true }),
   service: method => ({
     getUser: method(
@@ -13,15 +14,9 @@ const { methods } = httpServer({
       ({ userName }) => Promise.resolve({ name: userName })
     )
   }),
-  environment: () => {
-    const cookies = new Map<string, string>();
-    return {
-      setCookie: (name, value) => cookies.set(name, value),
-      readCookie: name => cookies.get(name),
-      methodName: '',
-      input: undefined
-    };
-  }
+  environment: nodejs
 });
+
+console.log(server);
 
 export type UserService = ClientType<typeof methods>;
