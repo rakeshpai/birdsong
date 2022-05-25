@@ -1,4 +1,6 @@
 import type { MaybeAsync, RPCSerializableValue, Validator } from '../core/shared';
+import type { RPCError } from './errors';
+import { badRequest, internalServerError, methodNotFound } from './errors';
 import type { Environment, EnvironmentHelpers } from './types';
 
 type HttpResolverArgsWithContext<
@@ -93,7 +95,7 @@ type HttpServerOptionsWithoutContext<Service, RuntimeArgs extends any[]> = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HttpServerReturnType<RuntimeArgs extends any[], Methods> = {
   server: (...args: RuntimeArgs) => void;
-  methods: {
+  clientStub: {
     [methodName in keyof Methods]:
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Methods[methodName] extends HttpServiceMethodDescriptorWithContext<any, infer Input, infer Output>
@@ -134,12 +136,22 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
       const {
         methodDetails, setCookie, readCookie, sendError, sendResponse
       } = options.environment(...args);
-      const md = await methodDetails();
+
+      let md: {
+        name: string | null;
+        input: unknown;
+      };
+      try {
+        // eslint-disable-next-line prefer-const
+        md = await methodDetails();
+      } catch (e) {
+        return sendError(e as RPCError);
+      }
       const { name: methodName, input } = md;
       const method = methods[methodName as keyof typeof methods];
 
       if (!method) {
-        return sendError(new Error(`Method '${methodName}' not found`), 400);
+        return sendError(methodNotFound(`Method not found: ${methodName}`));
       }
 
       let validatedInput: RPCSerializableValue;
@@ -147,7 +159,7 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         // eslint-disable-next-line prefer-const
         validatedInput = await method.validator(input);
       } catch (e) {
-        return sendError(e as Error, 400);
+        return sendError(badRequest((e as Error).message));
       }
 
       let output: RPCSerializableValue;
@@ -167,11 +179,12 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
             )
         );
       } catch (e) {
-        return sendError(e as Error, 500);
+        return sendError(internalServerError((e as Error).message));
       }
-      sendResponse(output);
+
+      sendResponse(JSON.stringify(output));
     },
-    methods: {} as MethodsClientType
+    clientStub: {} as MethodsClientType
   };
 }
 

@@ -1,22 +1,35 @@
+import http from 'http';
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+import { URL } from 'url';
 import nodejs from '../http/environments/node';
-import type { ClientType } from '../http/server';
 import httpServer from '../http/server';
 
-const { methods, server } = httpServer({
+const { clientStub, server } = httpServer({
   createContext: () => ({ isLoggedIn: true }),
   service: method => ({
     getUser: method(
-      value => ({ userId: String(value) }),
-      ({ userId }) => Promise.resolve({ id: userId })
+      value => value as { userId: string },
+      ({ userId }) => ({ id: userId })
     ),
     saveUser: method(
-      value => ({ userName: String(value) }),
-      ({ userName }) => Promise.resolve({ name: userName })
+      value => value as { userName: string },
+      ({ userName }) => ({ name: userName })
     )
   }),
   environment: nodejs
 });
 
-console.log(server);
+http.createServer((req, res) => {
+  if (!req.url) {
+    res.statusCode = 400;
+    res.end('No URL specified');
+    return;
+  }
 
-export type UserService = ClientType<typeof methods>;
+  if (req.url === '/api') return server(req, res);
+
+  res.statusCode = 404;
+  res.end('Not found');
+}).listen(9000);
+
+export type UserService = typeof clientStub;
