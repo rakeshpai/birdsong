@@ -2,18 +2,36 @@
 import fetch from 'node-fetch';
 import type { RPCSerializableValue } from './shared';
 
+const createGetUrl = (url: string, method: string, input: RPCSerializableValue) => {
+  const u = new URL(url);
+  u.searchParams.set('method', method);
+  u.searchParams.set('input', JSON.stringify(input));
+  return u.toString();
+};
+
+const canMakeGetRequest = (url: string, method: string, input: RPCSerializableValue) => (
+  (method.startsWith('get')
+    || method.startsWith('list'))
+  && createGetUrl(url, method, input).length < 1000
+);
+
 export const createClient = <T>({ url }: { url: string }) => new Proxy({}, {
   get: (target, prop) => (input: RPCSerializableValue) => {
+    const methodName = prop as string;
     // eslint-disable-next-line no-console
-    console.log('Invoking', prop, input);
+    console.log(`Invoking method ${methodName} with input:`, input);
 
-    return fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ method: prop, input })
-    }).then(res => res.json());
+    const fetchOptions: Parameters<typeof fetch> = canMakeGetRequest(url, methodName, input)
+      ? [createGetUrl(url, methodName, input), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      }]
+      : [url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ method: methodName, input })
+      }];
+
+    return fetch(...fetchOptions).then(res => res.json());
   }
 }) as T;

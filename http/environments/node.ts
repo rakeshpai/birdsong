@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import cookie from 'cookie';
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-import { URL, URLSearchParams, parse as urlParse } from 'url';
+import { parse as urlParse } from 'url';
 import type { EnvironmentHelpers } from '../types';
 import { getMethodDetails } from './helpers';
 import type { RPCError } from '../errors';
@@ -40,14 +39,17 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
     response.end(JSON.stringify({
       error: {
         message: error.message,
-        type: error.type || 'Unknnown'
+        type: error.type || 'Unknown'
       }
     }));
   };
 
   const methodDetails = () => getMethodDetails(
     request.method || 'GET',
-    { method: searchParams.method as string | null, input: searchParams.input as string | null },
+    {
+      name: searchParams.method as string | null,
+      input: searchParams.input as string | null
+    },
     postBody
   );
 

@@ -1,10 +1,10 @@
 import http from 'http';
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-import { URL } from 'url';
+import { parse } from 'url';
 import nodejs from '../http/environments/node';
 import httpServer from '../http/server';
 
 const { clientStub, server } = httpServer({
+  logging: true,
   createContext: () => ({ isLoggedIn: true }),
   service: method => ({
     getUser: method(
@@ -20,16 +20,22 @@ const { clientStub, server } = httpServer({
 });
 
 http.createServer((req, res) => {
+  // eslint-disable-next-line no-console
+  console.log(req.method, req.url);
   if (!req.url) {
     res.statusCode = 400;
     res.end('No URL specified');
     return;
   }
 
-  if (req.url === '/api') return server(req, res);
+  if (parse(req.url).pathname === '/api') return server(req, res);
 
   res.statusCode = 404;
-  res.end('Not found');
+  if (req.headers.accept?.includes('application/json')) {
+    res.end(JSON.stringify({ error: { message: 'Not found', type: 'NotFound' } }));
+  } else {
+    res.end('Not found');
+  }
 }).listen(9000);
 
 export type UserService = typeof clientStub;

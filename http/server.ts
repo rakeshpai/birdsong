@@ -76,6 +76,7 @@ type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> =
       : never
   );
   environment: Environment<RuntimeArgs>;
+  logging?: true;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,6 +91,7 @@ type HttpServerOptionsWithoutContext<Service, RuntimeArgs extends any[]> = {
       : never
   );
   environment: Environment<RuntimeArgs>;
+  logging?: boolean;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,6 +133,14 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
       : never
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const log = (...args: any[]) => {
+    if (options.logging) {
+      // eslint-disable-next-line no-console
+      console.log('[log]', ...args);
+    }
+  };
+
   return {
     server: async (...args: RuntimeArgs) => {
       const {
@@ -145,9 +155,13 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         // eslint-disable-next-line prefer-const
         md = await methodDetails();
       } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
         return sendError(e as RPCError);
       }
       const { name: methodName, input } = md;
+      log(`${methodName} called with`, input);
+
       const method = methods[methodName as keyof typeof methods];
 
       if (!method) {
@@ -159,6 +173,8 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         // eslint-disable-next-line prefer-const
         validatedInput = await method.validator(input);
       } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
         return sendError(badRequest((e as Error).message));
       }
 
@@ -179,9 +195,12 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
             )
         );
       } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
         return sendError(internalServerError((e as Error).message));
       }
 
+      log(`${methodName} returned`, output);
       sendResponse(JSON.stringify(output));
     },
     clientStub: {} as MethodsClientType
