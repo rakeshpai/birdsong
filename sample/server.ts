@@ -1,5 +1,6 @@
 import http from 'http';
 import { parse } from 'url';
+import { encode } from '../http/type-handlers';
 import nodejs from '../http/environments/node';
 import httpServer from '../http/server';
 
@@ -9,7 +10,7 @@ const { clientStub, server } = httpServer({
   service: method => ({
     getUser: method(
       value => value as { userId: string },
-      ({ userId }) => ({ id: userId })
+      ({ userId }) => ({ id: userId, x: { date: new Date() }, foo: /user/ })
     ),
     saveUser: method(
       value => value as { userName: string },
@@ -32,7 +33,7 @@ http.createServer((req, res) => {
 
   res.statusCode = 404;
   if (req.headers.accept?.includes('application/json')) {
-    res.end(JSON.stringify({ error: { message: 'Not found', type: 'NotFound' } }));
+    res.end(encode({ error: { message: 'Not found', type: 'NotFound' } }));
   } else {
     res.end('Not found');
   }

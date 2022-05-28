@@ -1,11 +1,12 @@
 // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-redeclare
 import fetch from 'node-fetch';
 import type { RPCSerializableValue } from './shared';
+import { encode, decode } from '../http/type-handlers';
 
 const createGetUrl = (url: string, method: string, input: RPCSerializableValue) => {
   const u = new URL(url);
   u.searchParams.set('method', method);
-  u.searchParams.set('input', JSON.stringify(input));
+  u.searchParams.set('input', encode(input));
   return u.toString();
 };
 
@@ -29,9 +30,9 @@ export const createClient = <T>({ url }: { url: string }) => new Proxy({}, {
       : [url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ method: methodName, input })
+        body: encode({ method: methodName, input })
       }];
 
-    return fetch(...fetchOptions).then(res => res.json());
+    return fetch(...fetchOptions).then(res => res.text()).then(decode);
   }
 }) as T;

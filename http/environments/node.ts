@@ -17,10 +17,7 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
       request.on('error', reject);
     });
 
-    return async () => {
-      const parsed = JSON.parse(await result);
-      return { method: parsed.method, input: parsed.input };
-    };
+    return () => result;
   })();
 
   const setCookie = (name: string, value: string) => {
@@ -31,17 +28,17 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
 
   const sendResponse = (output: unknown) => {
     response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify(output));
+    response.end(output);
   };
 
   const sendError = (error: RPCError) => {
     response.writeHead(error.statusCode || 500, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify({
+    response.end({
       error: {
         message: error.message,
         type: error.type || 'Unknown'
       }
-    }));
+    });
   };
 
   const methodDetails = () => getMethodDetails(

@@ -1,4 +1,5 @@
 import type { MaybeAsync, RPCSerializableValue, Validator } from '../core/shared';
+import { encode } from './type-handlers';
 import type { RPCError } from './errors';
 import { badRequest, internalServerError, methodNotFound } from './errors';
 import type { Environment, EnvironmentHelpers } from './types';
@@ -201,7 +202,7 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
       }
 
       log(`${methodName} returned`, output);
-      sendResponse(JSON.stringify(output));
+      sendResponse(encode(output));
     },
     clientStub: {} as MethodsClientType
   };
