@@ -2,5 +2,10 @@
   "extends": "rakeshpai",
   "parserOptions": {
     "project": "./tsconfig.json"
+  },
+  "enviroments": {
+    "es2020": true,
+    "node": true,
+    "browser": true
   }
 }

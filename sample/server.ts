@@ -10,7 +10,13 @@ const { clientStub, server } = httpServer({
   service: method => ({
     getUser: method(
       value => value as { userId: string },
-      ({ userId }) => ({ id: userId, x: { date: new Date() }, foo: /user/ })
+      ({ userId }) => ({
+        id: userId,
+        x: { date: new Date() },
+        foo: /user/,
+        map: new Map([['a', 'b']]),
+        set: new Set(['a', 'b'])
+      })
     ),
     saveUser: method(
       value => value as { userName: string },

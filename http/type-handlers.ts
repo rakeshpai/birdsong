@@ -1,11 +1,13 @@
+import type { RPCSerializableValue } from '../core/shared';
+
 const typeFieldName = '__bst__';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type Dencode = {
+type Dencode<T> = {
   canEncode: (value: any) => boolean;
   encode: (value: any) => any;
   canDecode: (value: any) => boolean;
-  decode: (value: any) => any;
+  decode: (value: T) => any;
 };
 
 const createType = (name: string, value: any) => ({ [typeFieldName]: name, value });
@@ -32,27 +34,48 @@ const looksLikeDate = (value: string) => (
   it to a date on the client before processing, but that's painful.
   Just send dates, people. Don't send strings that look like dates.
 */
-const dateType: Dencode = {
+const dateType: Dencode<Date> = {
   canEncode: () => false,
   encode: value => value,
   canDecode: value => typeof value === 'string' && looksLikeDate(value),
   decode: value => new Date(value)
 };
 
-const regexpType: Dencode = {
+const regexpType: Dencode<RegExp> = {
   canEncode: value => Boolean(value && value.constructor === RegExp),
   encode: value => createType('regexp', value.toString()),
   ...parseType('regexp', value => new RegExp(value))
 };
 
-const dencoders: Dencode[] = [dateType, regexpType];
+const mapType: Dencode<Map<string | number | boolean, RPCSerializableValue>> = {
+  canEncode: value => Boolean(value && value.constructor === Map),
+  encode: value => createType('map', [...value.entries()]),
+  ...parseType('map', value => new Map(value))
+};
+
+const setType: Dencode<Set<RPCSerializableValue>> = {
+  canEncode: value => Boolean(value && value.constructor === Set),
+  encode: value => createType('set', [...value]),
+  ...parseType('set', value => new Set(value))
+};
+
+const bigIntType: Dencode<BigInt> = {
+  canEncode: value => Boolean(value && typeof value === 'bigint'),
+  encode: value => createType('bigint', value.toString()),
+  ...parseType('bigint', value => BigInt(value))
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dencoders: Dencode<any>[] = [
+  dateType, regexpType, mapType, setType, bigIntType
+];
 
 export const encode = (value: unknown) => JSON.stringify(
   value,
-  (key, value) => dencoders.find(type => type.canEncode(value))?.encode(value) || value
+  (key, value) => dencoders.find(d => d.canEncode(value))?.encode(value) || value
 );
 
 export const decode = (value: string) => JSON.parse(
   value,
-  (key, value) => dencoders.find(type => type.canDecode(value))?.decode(value) || value
+  (key, value) => dencoders.find(d => d.canDecode(value))?.decode(value) || value
 );
