@@ -38,7 +38,7 @@ export const notFound = error('NotFound', 404);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isRPCError = (e: unknown): e is RPCError<any> => e instanceof RPCError;
 
-const isOfType = (type: ErrorType) => (error: unknown): error is RPCError<typeof type> => (
+const isOfType = <T extends ErrorType>(type: T) => (error: unknown): error is RPCError<T> => (
   isRPCError(error) && error.type === type
 );
 

@@ -177,8 +177,6 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         // eslint-disable-next-line prefer-const
         validatedInput = await method.validator(input);
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
         return sendError(badRequest((e as Error).message));
       }
 
@@ -204,7 +202,7 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         } else {
           // eslint-disable-next-line no-console
           console.error(e);
-          return sendError(internalServerError((e as Error).message));
+          return sendError(internalServerError('Internal server error'));
         }
       }
 
@@ -216,5 +214,3 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
 }
 
 export default httpServer;
-
-export type ClientType<T> = { [methodName in keyof T]: T[methodName] };
