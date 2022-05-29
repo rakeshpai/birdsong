@@ -182,7 +182,7 @@ it('should throw without details if server throws', async () => {
   }
 });
 
-it('should get client-side error in case of validation error', async () => {
+it('should receive client-side error in case of validation error', async () => {
   const client = createClient<typeof clientStub>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
