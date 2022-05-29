@@ -1,5 +1,6 @@
 /* global globalThis */
 import type { RPCSerializableValue } from '../../../common/types';
+import { RPCError } from '../shared/errors';
 import { encode, decode } from '../shared/type-handlers';
 
 const createGetUrl = (url: string, method: string, input: RPCSerializableValue) => {
@@ -23,7 +24,7 @@ type ClientOptions = {
 };
 
 export const createClient = <T>({ url, fetch = globalFetch }: ClientOptions) => new Proxy({}, {
-  get: (target, prop) => (input: RPCSerializableValue) => {
+  get: (target, prop) => async (input: RPCSerializableValue) => {
     const methodName = prop as string;
     // eslint-disable-next-line no-console
     console.log(`Invoking method ${methodName} with input:`, input);
@@ -39,6 +40,20 @@ export const createClient = <T>({ url, fetch = globalFetch }: ClientOptions) => 
         body: encode({ method: methodName, input })
       }];
 
-    return fetch(...fetchOptions).then(res => res.text()).then(decode);
+    const response = await fetch(...fetchOptions);
+
+    if (!response.ok) {
+      const error = await response.json();
+
+      if (error?.error?.type && error?.error?.message) {
+        throw new RPCError(error.error.type, error.error.message, response.status);
+      } else {
+        throw new Error(error);
+      }
+    }
+
+    const result = decode(await response.text());
+
+    return result;
   }
 }) as T;

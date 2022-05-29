@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "exports": {
+    "./server": "./dist/packages/http/server/server.js",
+    "./server/environments/node": "./dist/packages/http/server/environments/node.js",
+    "./client": "./dist/packages/http/client/client.js"
+  },
   "scripts": {
     "tsc": "tsc --build",
     "build": "npm run build -w packages/http",
@@ -10,8 +15,16 @@
     "test": "vitest run --coverage",
     "lint": "eslint --ext .ts,.js,.tsx ./"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rakeshpai/birdsong.git"
+  },
   "author": "",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rakeshpai/birdsong/issues"
+  },
+  "homepage": "https://github.com/rakeshpai/birdsong#readme",
   "devDependencies": {
     "@types/node-fetch": "^2.6.1",
     "c8": "^7.11.3",

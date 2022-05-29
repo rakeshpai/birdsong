@@ -9,6 +9,7 @@ import fetch from 'node-fetch';
 import httpServer from '../server/server';
 import node from '../server/environments/node';
 import { createClient } from '../client/client';
+import { unauthorized } from '../shared/errors';
 
 const { server: rpcServer, clientStub } = httpServer({
   environment: node,
@@ -35,6 +36,12 @@ const { server: rpcServer, clientStub } = httpServer({
     saveUser: method(
       value => value as { name: string },
       async ({ name }) => `'${name}' saved`
+    ),
+    accessSecret: method(
+      value => value as { name: string },
+      async ({ name }) => {
+        throw unauthorized(`'${name}' is not authorized`);
+      }
     )
   })
 });
@@ -92,4 +99,13 @@ it('should make yet another rpc call', async () => {
   const result = await client.saveUser({ name: 'John Doe' });
   expectType<string>(result);
   expect(result).toMatchSnapshot();
+});
+
+it('should throw errors in case of http error', async () => {
+  const client = createClient<typeof clientStub>({
+    url: 'http://localhost:4949/api',
+    fetch: fetch as unknown as FetchType
+  });
+
+  await expect(client.accessSecret({ name: 'John Doe' })).rejects.toThrow();
 });
