@@ -158,6 +158,7 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return sendError(e as RPCError<any>);
       }
       const { name: methodName, input } = md;

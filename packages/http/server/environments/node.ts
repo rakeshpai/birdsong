@@ -10,6 +10,8 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
   const cookies = cookie.parse(request.headers.cookie || '');
   const searchParams = urlParse(request.url || '', true).query;
 
+  console.log(`[${request.method || 'get'}] ${request.url}`);
+
   const postBody = (() => {
     const result: Promise<string> = new Promise((resolve, reject) => {
       let body = '';
@@ -28,18 +30,20 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
   const readCookie = (name: string): string | undefined => cookies[name];
 
   const sendResponse = (output: unknown) => {
+    console.log('Responding with', output);
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(output);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sendError = (error: RPCError<any>) => {
     response.writeHead(error.statusCode || 500, { 'Content-Type': 'application/json' });
-    response.end({
+    response.end(JSON.stringify({
       error: {
         message: error.message,
         type: error.type || 'Unknown'
       }
-    });
+    }));
   };
 
   const methodDetails = () => getMethodDetails(

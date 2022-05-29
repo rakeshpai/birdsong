@@ -3,6 +3,7 @@
   "include": [
     "../../common",
     "./shared",
-    "./server/environments/**/*"
+    "./server",
+    "./client"
   ]
 }

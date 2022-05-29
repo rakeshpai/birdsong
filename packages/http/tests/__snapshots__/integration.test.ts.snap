@@ -1,0 +1,30 @@
+// Vitest Snapshot v1
+
+exports[`should make an rpc call 1`] = `
+{
+  "dateOfBirth": 1980-01-01T00:00:00.000Z,
+  "id": 1,
+  "name": "John Doe",
+  "personal": {
+    "interests": Set {
+      "Coding",
+      "Reading",
+      "Sleeping",
+    },
+    "social": Map {
+      "twitter" => "@john_doe",
+      "github" => "john_doe",
+    },
+  },
+}
+`;
+
+exports[`should make another rpc call 1`] = `
+[
+  "home",
+  "work",
+  "other",
+]
+`;
+
+exports[`should make yet another rpc call 1`] = `"'John Doe' saved"`;

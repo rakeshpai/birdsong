@@ -1,4 +1,5 @@
-import type { RPCSerializableValue } from '../../../shared/types';
+/* global globalThis */
+import type { RPCSerializableValue } from '../../../common/types';
 import { encode, decode } from '../shared/type-handlers';
 
 const createGetUrl = (url: string, method: string, input: RPCSerializableValue) => {

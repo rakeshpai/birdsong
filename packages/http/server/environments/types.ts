@@ -7,6 +7,7 @@ export type EnvironmentHelpers = {
   methodDetails: () => Promise<{ name: string | null; input: unknown }>;
   readCookie: (name: string) => string | undefined;
   sendResponse: (output: RPCSerializableValue) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sendError: (error: RPCError<any>) => void;
 };
 

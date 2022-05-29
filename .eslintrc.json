@@ -1,11 +1,25 @@
 {
   "extends": "rakeshpai",
+  "ignorePatterns": [
+    "coverage",
+    "dist",
+    "node_modules"
+  ],
   "parserOptions": {
-    "project": "./tsconfig.json"
+    "project": [
+      "./packages/http/tsconfig.eslint.json",
+      "./common/tsconfig.json"
+    ]
   },
-  "enviroments": {
-    "es2020": true,
-    "node": true,
-    "browser": true
+  "rules": {
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": [
+          "**/*.test.ts",
+          "**/*.spec.ts"
+        ]
+      }
+    ]
   }
 }
