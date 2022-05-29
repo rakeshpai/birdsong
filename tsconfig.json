@@ -4,18 +4,21 @@
   ],
   "compilerOptions": {
     "rootDir": "./",
-    "outDir": "./dist",
+    "outDir": "dist",
     "target": "esnext",
     "module": "commonjs",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "declaration": true,
+    "composite": true,
+    "types": []
   },
   "lib": [
-    "es6",
-    "dom",
-    "node"
+    "esnext"
   ],
   "references": [
     {

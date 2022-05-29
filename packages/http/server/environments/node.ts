@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import type { IncomingMessage, ServerResponse } from 'http';
 import cookie from 'cookie';
 import { parse as urlParse } from 'url';

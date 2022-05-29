@@ -1,4 +1,4 @@
-import { createClient } from '../http/client';
+import { createClient } from '../core/client';
 import fetch from 'node-fetch';
 import type { UserService } from './server';
 

@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -16,5 +15,12 @@
   "bugs": {
     "url": "https://github.com/rakeshpai/birdsong/issues"
   },
-  "homepage": "https://github.com/rakeshpai/birdsong#readme"
+  "homepage": "https://github.com/rakeshpai/birdsong#readme",
+  "dependencies": {
+    "cookie": "^0.5.0"
+  },
+  "devDependencies": {
+    "@types/cookie": "^0.5.1",
+    "@types/node": "^17.0.36"
+  }
 }
