@@ -1,6 +1,6 @@
 // Vitest Snapshot v1
 
-exports[`should make an rpc call 1`] = `
+exports[`should make an rpc call (get + types) 1`] = `
 {
   "dateOfBirth": 1980-01-01T00:00:00.000Z,
   "id": 1,
@@ -19,7 +19,7 @@ exports[`should make an rpc call 1`] = `
 }
 `;
 
-exports[`should make another rpc call 1`] = `
+exports[`should make another rpc call (array get) 1`] = `
 [
   "home",
   "work",
@@ -27,4 +27,4 @@ exports[`should make another rpc call 1`] = `
 ]
 `;
 
-exports[`should make yet another rpc call 1`] = `"'John Doe' saved"`;
+exports[`should make yet another rpc call (post) 1`] = `"'John Doe' saved"`;

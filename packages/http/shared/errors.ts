@@ -35,8 +35,11 @@ export const unauthorized = error('Unauthorized', 401);
 export const forbidden = error('Forbidden', 403);
 export const notFound = error('NotFound', 404);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const isRPCError = (e: unknown): e is RPCError<any> => e instanceof RPCError;
+
 const isOfType = (type: ErrorType) => (error: unknown): error is RPCError<typeof type> => (
-  error instanceof RPCError && error.type === type
+  isRPCError(error) && error.type === type
 );
 
 export const isCouldntParseRequest = isOfType('CouldntParseRequest');

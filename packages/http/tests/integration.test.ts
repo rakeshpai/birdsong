@@ -9,7 +9,8 @@ import fetch from 'node-fetch';
 import httpServer from '../server/server';
 import node from '../server/environments/node';
 import { createClient } from '../client/client';
-import { unauthorized } from '../shared/errors';
+import type { RPCError } from '../shared/errors';
+import { isUnauthorized, unauthorized } from '../shared/errors';
 
 const { server: rpcServer, clientStub } = httpServer({
   environment: node,
@@ -60,7 +61,7 @@ afterAll(() => {
 
 type FetchType = Parameters<typeof createClient>[0]['fetch'];
 
-it('should make an rpc call', async () => {
+it('should make an rpc call (get + types)', async () => {
   const client = createClient<typeof clientStub>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
@@ -79,7 +80,7 @@ it('should make an rpc call', async () => {
   expect(result).toMatchSnapshot();
 });
 
-it('should make another rpc call', async () => {
+it('should make another rpc call (array get)', async () => {
   const client = createClient<typeof clientStub>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
@@ -90,7 +91,7 @@ it('should make another rpc call', async () => {
   expect(result).toMatchSnapshot();
 });
 
-it('should make yet another rpc call', async () => {
+it('should make yet another rpc call (post)', async () => {
   const client = createClient<typeof clientStub>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
@@ -101,11 +102,19 @@ it('should make yet another rpc call', async () => {
   expect(result).toMatchSnapshot();
 });
 
-it('should throw errors in case of http error', async () => {
+it('should throw in case of http error', async () => {
   const client = createClient<typeof clientStub>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
   });
 
-  await expect(client.accessSecret({ name: 'John Doe' })).rejects.toThrow();
+  expect.assertions(3);
+  try {
+    await client.accessSecret({ name: 'John Doe' });
+  } catch (e) {
+    expectType<RPCError<'Unauthorized'>>(e);
+    expect(isUnauthorized(e)).toBe(true);
+    expect(e.message).toEqual("'John Doe' is not authorized");
+    expect(e.type).toEqual('Unauthorized');
+  }
 });

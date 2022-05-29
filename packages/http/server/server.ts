@@ -1,7 +1,9 @@
 import type { MaybeAsync, RPCSerializableValue, Validator } from '../../../common/types';
 import { encode } from '../shared/type-handlers';
 import type { RPCError } from '../shared/errors';
-import { badRequest, internalServerError, methodNotFound } from '../shared/errors';
+import {
+  isRPCError, badRequest, internalServerError, methodNotFound
+} from '../shared/errors';
 import type { Environment, EnvironmentHelpers } from './environments/types';
 
 type HttpResolverArgsWithContext<
@@ -197,9 +199,13 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
             )
         );
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
-        return sendError(internalServerError((e as Error).message));
+        if (isRPCError(e)) {
+          sendError(e);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error(e);
+          return sendError(internalServerError((e as Error).message));
+        }
       }
 
       log(`${methodName} returned`, output);
