@@ -5,5 +5,8 @@
     "./shared",
     "./server",
     "./client"
-  ]
+  ],
+  "compilerOptions": {
+    "outDir": "dist"
+  }
 }

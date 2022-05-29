@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "tsc": "tsc --build",
+    "build": "npm run build -w packages/http",
     "start": "ts-node sample/client.ts",
     "test": "vitest run --coverage",
     "lint": "eslint --ext .ts,.js,.tsx ./"
