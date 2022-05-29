@@ -1,0 +1,37 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "./shared",
+    "../../common"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "compilerOptions": {
+    "outDir": "./dist",
+    "target": "esnext",
+    "lib": [
+      "esnext"
+    ],
+    "module": "ES2020",
+    "moduleResolution": "Node",
+    "strict": true,
+    "noImplicitOverride": true,
+    // Needed for CommonJS modules: markdown-it, fs-extra
+    "allowSyntheticDefaultImports": true,
+    //
+    "sourceMap": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true, // enables importers to jump to source
+  },
+  "references": [
+    {
+      "path": "./server/tsconfig.json"
+    },
+    {
+      "path": "./client/tsconfig.json"
+    }
+  ]
+}

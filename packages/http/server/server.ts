@@ -1,8 +1,8 @@
-import type { MaybeAsync, RPCSerializableValue, Validator } from '../core/shared';
-import { encode } from './type-handlers';
-import type { RPCError } from './errors';
-import { badRequest, internalServerError, methodNotFound } from './errors';
-import type { Environment, EnvironmentHelpers } from './types';
+import type { MaybeAsync, RPCSerializableValue, Validator } from '../../../common/types';
+import { encode } from '../shared/type-handlers';
+import type { RPCError } from '../shared/errors';
+import { badRequest, internalServerError, methodNotFound } from '../shared/errors';
+import type { Environment, EnvironmentHelpers } from './environments/types';
 
 type HttpResolverArgsWithContext<
   Context,

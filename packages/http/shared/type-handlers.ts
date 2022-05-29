@@ -1,4 +1,4 @@
-import type { RPCSerializableValue } from '../core/shared';
+import type { RPCSerializableValue } from '../../../common/types';
 
 const typeFieldName = '__bst__';
 

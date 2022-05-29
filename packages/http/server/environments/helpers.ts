@@ -1,6 +1,6 @@
-import { decode } from '../type-handlers';
-import { noMethodSpecified } from '../errors';
-import type { EnvironmentHelpers } from '../types';
+import { decode } from '../../shared/type-handlers';
+import { noMethodSpecified } from '../../shared/errors';
+import type { EnvironmentHelpers } from './types';
 
 const isGettable = (methodName: string) => (
   methodName.startsWith('get')

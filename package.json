@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "tsc": "tsc",
+    "tsc": "tsc --build",
     "start": "ts-node sample/client.ts"
   },
   "author": "",
@@ -20,5 +20,8 @@
   },
   "dependencies": {
     "cookie": "^0.5.0"
-  }
+  },
+  "workspaces": [
+    "packages/http"
+  ]
 }

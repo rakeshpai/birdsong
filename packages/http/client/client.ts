@@ -1,5 +1,5 @@
-import type { RPCSerializableValue } from '../core/shared';
-import { encode, decode } from './type-handlers';
+import type { RPCSerializableValue } from '../../../shared/types';
+import { encode, decode } from '../shared/type-handlers';
 
 const createGetUrl = (url: string, method: string, input: RPCSerializableValue) => {
   const u = new URL(url);

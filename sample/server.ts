@@ -1,8 +1,8 @@
 import http from 'http';
 import { parse } from 'url';
-import { encode } from '../http/type-handlers';
-import nodejs from '../http/environments/node';
-import httpServer from '../http/server';
+import nodejs from '../packages/http/server/environments/node';
+import httpServer from '../packages/http/server';
+import { encode } from '../packages/http/type-handlers';
 
 const { clientStub, server } = httpServer({
   logging: true,

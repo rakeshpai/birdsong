@@ -1,4 +1,4 @@
-import type { MaybeAsync, RPCSerializableValue } from './shared';
+import type { MaybeAsync, RPCSerializableValue } from '../shared/types';
 
 type Validator<Input extends RPCSerializableValue> = (value: unknown) => MaybeAsync<Input>;
 type Resolver<

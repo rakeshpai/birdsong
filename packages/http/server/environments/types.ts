@@ -1,6 +1,6 @@
 import type { CookieSerializeOptions } from 'cookie';
-import type { RPCSerializableValue } from '../core/shared';
-import type { RPCError } from './errors';
+import type { RPCSerializableValue } from '../../../../common/types';
+import type { RPCError } from '../../shared/errors';
 
 export type EnvironmentHelpers = {
   setCookie: (name: string, value: string, options: CookieSerializeOptions | undefined) => void;
