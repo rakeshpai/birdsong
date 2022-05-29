@@ -31,7 +31,7 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
     response.end(output);
   };
 
-  const sendError = (error: RPCError) => {
+  const sendError = (error: RPCError<any>) => {
     response.writeHead(error.statusCode || 500, { 'Content-Type': 'application/json' });
     response.end({
       error: {

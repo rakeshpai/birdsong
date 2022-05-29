@@ -9,20 +9,20 @@ type ErrorType =
   | 'Forbidden'
   | 'NotFound';
 
-export class RPCError extends Error {
-  type: ErrorType;
+export class RPCError<T extends ErrorType> extends Error {
+  type: T;
 
   statusCode: number;
 
-  constructor(type: ErrorType, message: string, statusCode: number) {
+  constructor(type: T, message: string, statusCode: number) {
     super(message);
     this.type = type;
     this.statusCode = statusCode;
   }
 }
 
-const error = (type: ErrorType, statusCode: number) => (message: string) => (
-  new RPCError(type, message, statusCode)
+const error = <T extends ErrorType>(type: T, statusCode: number) => (message: string) => (
+  new RPCError<T>(type, message, statusCode)
 );
 
 export const couldntParseRequest = error('CouldntParseRequest', 400);
@@ -35,7 +35,7 @@ export const unauthorized = error('Unauthorized', 401);
 export const forbidden = error('Forbidden', 403);
 export const notFound = error('NotFound', 404);
 
-const isOfType = (type: ErrorType) => (error: RPCError) => (
+const isOfType = (type: ErrorType) => (error: unknown): error is RPCError<typeof type> => (
   error instanceof RPCError && error.type === type
 );
 

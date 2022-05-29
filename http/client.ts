@@ -1,7 +1,5 @@
-// eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-redeclare
-import fetch from 'node-fetch';
-import type { RPCSerializableValue } from './shared';
-import { encode, decode } from '../http/type-handlers';
+import type { RPCSerializableValue } from '../core/shared';
+import { encode, decode } from './type-handlers';
 
 const createGetUrl = (url: string, method: string, input: RPCSerializableValue) => {
   const u = new URL(url);
@@ -16,7 +14,14 @@ const canMakeGetRequest = (url: string, method: string, input: RPCSerializableVa
   && createGetUrl(url, method, input).length < 1000
 );
 
-export const createClient = <T>({ url }: { url: string }) => new Proxy({}, {
+const globalFetch = globalThis.fetch;
+
+type ClientOptions = {
+  url: string;
+  fetch?: typeof globalFetch;
+};
+
+export const createClient = <T>({ url, fetch = globalFetch }: ClientOptions) => new Proxy({}, {
   get: (target, prop) => (input: RPCSerializableValue) => {
     const methodName = prop as string;
     // eslint-disable-next-line no-console
