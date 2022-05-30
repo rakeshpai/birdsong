@@ -17,6 +17,8 @@ import {
   isInternalServerError, isRPCError, isUnauthorized, unauthorized
 } from '../shared/errors';
 
+// #region server
+
 const { server: rpcServer, clientStub } = httpServer({
   environment: node,
   service: method => ({
@@ -26,6 +28,7 @@ const { server: rpcServer, clientStub } = httpServer({
         id,
         name: 'John Doe',
         dateOfBirth: new Date('1980-01-01'),
+        validateNum: /^\d+$/,
         personal: {
           interests: new Set(['Coding', 'Reading', 'Sleeping']),
           social: new Map([
@@ -79,11 +82,15 @@ afterAll(() => {
   server.close();
 });
 
+type GreatService = typeof clientStub;
+
+// #endregion
+
 type FetchType = Parameters<typeof createClient>[0]['fetch'];
 
 it('should make an rpc call (get + types)', async () => {
   const log: Parameters<Logger>[0][] = [];
-  const client = createClient<typeof clientStub>({
+  const client = createClient<GreatService>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType,
     logger: l => log.push(l)
@@ -94,18 +101,21 @@ it('should make an rpc call (get + types)', async () => {
     id: number;
     name: string;
     dateOfBirth: Date;
+    validateNum: RegExp;
     personal: {
       interests: Set<string>;
       social: Map<string, string>;
     };
   }>(result);
   expect(result).toMatchSnapshot();
+  expect(result.validateNum.test('1234')).toBe(true);
+  expect(result.validateNum.test('john@doe')).toBe(false);
   expect(log.length).toBe(1);
   expect(log[0].options.method.toLowerCase()).toBe('get');
 });
 
 it('should make another rpc call (array get)', async () => {
-  const client = createClient<typeof clientStub>({
+  const client = createClient<GreatService>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
   });
@@ -117,7 +127,7 @@ it('should make another rpc call (array get)', async () => {
 
 it('should make yet another rpc call (post)', async () => {
   const log: Parameters<Logger>[0][] = [];
-  const client = createClient<typeof clientStub>({
+  const client = createClient<GreatService>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType,
     logger: l => log.push(l)
@@ -132,7 +142,7 @@ it('should make yet another rpc call (post)', async () => {
 });
 
 it('should throw in case of http error', async () => {
-  const client = createClient<typeof clientStub>({
+  const client = createClient<GreatService>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
   });
@@ -151,7 +161,7 @@ it('should throw in case of http error', async () => {
 
 it('should set a cookie', async () => {
   const log: Parameters<Logger>[0][] = [];
-  const client = createClient<typeof clientStub>({
+  const client = createClient<GreatService>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType,
     logger: l => log.push(l)
@@ -165,7 +175,7 @@ it('should set a cookie', async () => {
 });
 
 it('should throw without details if server throws', async () => {
-  const client = createClient<typeof clientStub>({
+  const client = createClient<GreatService>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
   });
@@ -183,7 +193,7 @@ it('should throw without details if server throws', async () => {
 });
 
 it('should receive client-side error in case of validation error', async () => {
-  const client = createClient<typeof clientStub>({
+  const client = createClient<GreatService>({
     url: 'http://localhost:4949/api',
     fetch: fetch as unknown as FetchType
   });

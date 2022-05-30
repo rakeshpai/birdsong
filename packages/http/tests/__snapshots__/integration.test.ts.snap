@@ -16,6 +16,7 @@ exports[`should make an rpc call (get + types) 1`] = `
       "github" => "john_doe",
     },
   },
+  "validateNum": /\\^\\\\d\\+\\$/,
 }
 `;
 

@@ -44,7 +44,10 @@ const dateType: Dencode<Date> = {
 const regexpType: Dencode<RegExp> = {
   canEncode: value => Boolean(value && value.constructor === RegExp),
   encode: value => createType('regexp', value.toString()),
-  ...parseType('regexp', value => new RegExp(value))
+  ...parseType('regexp', value => {
+    const m = value.match(/\/(.*)\/(.*)?/);
+    return new RegExp(m[1], m[2] || '');
+  })
 };
 
 const mapType: Dencode<Map<string | number | boolean, RPCSerializableValue>> = {
