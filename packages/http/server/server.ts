@@ -66,36 +66,65 @@ const methodWithoutContext = <Input extends RPCSerializableValue, Output extends
   resolver: HttpResolverWithoutContext<Input, Output>
 ): HttpServiceMethodDescriptorWithoutContext<Input, Output> => ({ validator, resolver });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> = {
-  createContext: (helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'>) => Context;
-  service: (method: MethodForContext<Context>) => (
-    Service extends {
-      [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithContext<Context, infer Input, infer Output>
-        ? HttpServiceMethodDescriptorWithContext<Context, Input, Output>
-        : never
-    }
-      ? Service
-      : never
-  );
-  environment: Environment<RuntimeArgs>;
-  logging?: true;
+export type LogLine =
+  | { type: 'error-parse-method-details'; error: unknown }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { type: 'method-description'; methodName: string | null; input: any }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { type: 'error-method-not-found'; methodName: string | null; input: any }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { type: 'error-validate-input'; input: any; error: unknown }
+  | {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type: 'error-resolve-method-rpc'; input: any; validatedInput: any; error: unknown;
+  }
+  | {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type: 'error-resolve-method-unknown'; input: any; validatedInput: any; error: unknown;
+  }
+  | {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type: 'method-output'; input: any; validatedInput: any; output: any;
+  };
+
+type HttpServerOptionsBase = {
+  logger?: (log: LogLine) => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HttpServerOptionsWithoutContext<Service, RuntimeArgs extends any[]> = {
-  service: (method: MethodWithoutContext) => (
-    Service extends {
-      [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithoutContext<infer Input, infer Output>
-        ? HttpServiceMethodDescriptorWithoutContext<Input, Output>
+type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> =
+  HttpServerOptionsBase & {
+    createContext: (helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'>) => Context;
+    service: (method: MethodForContext<Context>) => (
+      Service extends {
+        [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithContext<
+          Context, infer Input, infer Output
+        >
+          ? HttpServiceMethodDescriptorWithContext<Context, Input, Output>
+          : never
+      }
+        ? Service
         : never
-    }
-      ? Service
-      : never
-  );
-  environment: Environment<RuntimeArgs>;
-  logging?: boolean;
-};
+    );
+    environment: Environment<RuntimeArgs>;
+  };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type HttpServerOptionsWithoutContext<Service, RuntimeArgs extends any[]> =
+  HttpServerOptionsBase & {
+    service: (method: MethodWithoutContext) => (
+      Service extends {
+        [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithoutContext<
+          infer Input, infer Output
+        >
+          ? HttpServiceMethodDescriptorWithoutContext<Input, Output>
+          : never
+      }
+        ? Service
+        : never
+    );
+    environment: Environment<RuntimeArgs>;
+  };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HttpServerReturnType<RuntimeArgs extends any[], Methods> = {
@@ -136,14 +165,6 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
       : never
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const log = (...args: any[]) => {
-    if (options.logging) {
-      // eslint-disable-next-line no-console
-      console.log('[log]', ...args);
-    }
-  };
-
   return {
     server: async (...args: RuntimeArgs) => {
       const {
@@ -158,17 +179,17 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         // eslint-disable-next-line prefer-const
         md = await methodDetails();
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
+        options.logger?.({ type: 'error-parse-method-details', error: e });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return sendError(e as RPCError<any>);
       }
       const { name: methodName, input } = md;
-      log(`${methodName} called with`, input);
+      options.logger?.({ type: 'method-description', methodName, input });
 
       const method = methods[methodName as keyof typeof methods];
 
       if (!method) {
+        options.logger?.({ type: 'error-method-not-found', methodName, input });
         return sendError(methodNotFound(`Method not found: ${methodName}`));
       }
 
@@ -177,6 +198,7 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         // eslint-disable-next-line prefer-const
         validatedInput = await method.validator(input);
       } catch (e) {
+        options.logger?.({ type: 'error-validate-input', input, error: e });
         return sendError(badRequest((e as Error).message));
       }
 
@@ -198,15 +220,21 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         );
       } catch (e) {
         if (isRPCError(e)) {
+          options.logger?.({
+            type: 'error-resolve-method-rpc', input, validatedInput, error: e
+          });
           sendError(e);
         } else {
-          // eslint-disable-next-line no-console
-          console.error(e);
+          options.logger?.({
+            type: 'error-resolve-method-unknown', input, validatedInput, error: e
+          });
           return sendError(internalServerError('Internal server error'));
         }
       }
 
-      log(`${methodName} returned`, output);
+      options.logger?.({
+        type: 'method-output', input, validatedInput, output
+      });
       sendResponse(encode(output));
     },
     clientStub: {} as MethodsClientType

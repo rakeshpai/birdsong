@@ -18,7 +18,7 @@ const canMakeGetRequest = (url: string, method: string, input: RPCSerializableVa
 
 const globalFetch = globalThis.fetch;
 
-export type Logger = (x: {
+export type LogLine = {
   url: string;
   options: RequestInit;
   response: Response;
@@ -26,7 +26,9 @@ export type Logger = (x: {
   startTime: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parsed: any;
-}) => void;
+};
+
+export type Logger = (x: LogLine) => void;
 
 export type ClientOptions = {
   url: string;
