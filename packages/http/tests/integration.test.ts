@@ -209,3 +209,23 @@ it('should receive client-side error in case of validation error', async () => {
     expect(e.statusCode).toBe(400);
   }
 });
+
+it('should abort if a abort signal is received', async () => {
+  const client = createClient<GreatService>({
+    url: 'http://localhost:4949/api',
+    fetch: fetch as unknown as FetchType
+  });
+
+  const abortController = new AbortController();
+
+  expect.assertions(3);
+  try {
+    const promise = client.login({ username: 'john', password: 'doe' }, { abortSignal: abortController.signal });
+    abortController.abort();
+    await promise;
+  } catch (e) {
+    expect(e).toBeInstanceOf(Error);
+    expect(e.name).toBe('AbortError');
+    expect(e.type).toEqual('aborted');
+  }
+});

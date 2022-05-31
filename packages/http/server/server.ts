@@ -66,26 +66,28 @@ const methodWithoutContext = <Input extends RPCSerializableValue, Output extends
   resolver: HttpResolverWithoutContext<Input, Output>
 ): HttpServiceMethodDescriptorWithoutContext<Input, Output> => ({ validator, resolver });
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
   | { type: 'error-parse-method-details'; error: unknown }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   | { type: 'method-description'; methodName: string | null; input: any }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   | { type: 'error-method-not-found'; methodName: string | null; input: any }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   | { type: 'error-validate-input'; input: any; error: unknown }
   | {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     type: 'error-resolve-method-rpc'; input: any; validatedInput: any; error: unknown;
   }
   | {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     type: 'error-resolve-method-unknown'; input: any; validatedInput: any; error: unknown;
   }
   | {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     type: 'method-output'; input: any; validatedInput: any; output: any;
+  }
+  | {
+    type: 'validation-passed'; methodName: string; input: any; validatedInput: any;
   };
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
 type HttpServerOptionsBase = {
   logger?: (log: LogLine) => void;
@@ -201,6 +203,11 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         options.logger?.({ type: 'error-validate-input', input, error: e });
         return sendError(badRequest((e as Error).message));
       }
+
+      options.logger?.({
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        type: 'validation-passed', methodName: methodName!, input, validatedInput
+      });
 
       let output: RPCSerializableValue;
       try {

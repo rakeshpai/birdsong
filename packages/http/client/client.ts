@@ -36,21 +36,37 @@ export type ClientOptions = {
   logger?: Logger;
 };
 
-export const createClient = <T>({ url, fetch = globalFetch, logger }: ClientOptions) => (
+export type Options = Partial<{
+  abortSignal: AbortSignal;
+}>;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ServerServiceType = Record<string, any>;
+
+export type ClientType<ServiceDetails extends ServerServiceType> = {
+  [MethodName in keyof ServiceDetails]: (
+    input: Parameters<ServiceDetails[MethodName]>[0],
+    options?: Options
+  ) => Promise<ReturnType<ServiceDetails[MethodName]>>;
+};
+
+export const createClient = <T extends ServerServiceType>({ url, fetch = globalFetch, logger }: ClientOptions) => (
   new Proxy({}, {
-    get: (target, prop) => async (input: RPCSerializableValue) => {
+    get: (target, prop) => async (input: RPCSerializableValue, options: Options = {}) => {
       const startTime = Date.now();
       const methodName = prop as string;
 
       const fetchOptions: Parameters<typeof fetch> = canMakeGetRequest(url, methodName, input)
         ? [createGetUrl(url, methodName, input), {
           method: 'GET',
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: options.abortSignal
         }]
         : [url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: encode({ method: methodName, input })
+          body: encode({ method: methodName, input }),
+          signal: options.abortSignal
         }];
 
       const response = await fetch(...fetchOptions);
@@ -84,5 +100,5 @@ export const createClient = <T>({ url, fetch = globalFetch, logger }: ClientOpti
       log(result);
       return result;
     }
-  }) as T
+  }) as ClientType<T>
 );
