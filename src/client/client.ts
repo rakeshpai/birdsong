@@ -1,5 +1,5 @@
 /* global globalThis */
-import type { RPCSerializableValue } from '../../../common/types';
+import type { RPCSerializableValue } from '../shared/types';
 import { RPCError } from '../shared/errors';
 import { encode, decode } from '../shared/type-handlers';
 

@@ -1,6 +1,6 @@
 {
   "include": [
-    "./common"
+    "./src"
   ],
   "compilerOptions": {
     "rootDir": "./",
@@ -14,18 +14,9 @@
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "declaration": true,
-    "composite": true,
     "types": []
   },
   "lib": [
     "esnext"
   ],
-  "references": [
-    {
-      "path": "./packages/http/tsconfig.json"
-    },
-    {
-      "path": "./common/tsconfig.json"
-    }
-  ]
 }

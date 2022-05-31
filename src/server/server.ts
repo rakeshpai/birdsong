@@ -1,4 +1,4 @@
-import type { MaybeAsync, RPCSerializableValue, Validator } from '../../../common/types';
+import type { MaybeAsync, RPCSerializableValue, Validator } from '../shared/types';
 import { encode } from '../shared/type-handlers';
 import type { RPCError } from '../shared/errors';
 import {

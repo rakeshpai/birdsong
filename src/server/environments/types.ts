@@ -1,5 +1,5 @@
 import type { CookieSerializeOptions } from 'cookie';
-import type { RPCSerializableValue } from '../../../../common/types';
+import type { RPCSerializableValue } from '../../shared/types';
 import type { RPCError } from '../../shared/errors';
 
 export type EnvironmentHelpers = {

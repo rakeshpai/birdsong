@@ -7,8 +7,7 @@
   ],
   "parserOptions": {
     "project": [
-      "./packages/http/tsconfig.eslint.json",
-      "./common/tsconfig.json"
+      "./tsconfig.json"
     ]
   },
   "rules": {

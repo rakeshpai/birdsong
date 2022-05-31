@@ -14,7 +14,7 @@ import { createClient } from '../client/client';
 import {
   couldntParseRequest,
   isBadRequest,
-  isInternalServerError, isRPCError, isUnauthorized, unauthorized
+  isInternalServerError, isRPCError, isUnauthorized, RPCError, unauthorized
 } from '../shared/errors';
 
 // #region server
@@ -70,11 +70,11 @@ const { server: rpcServer, clientStub } = httpServer({
   })
 });
 
-let server;
+let server: http.Server;
 
 beforeAll(() => {
   server = http.createServer((req, res) => {
-    if (req.url.startsWith('/api')) return rpcServer(req, res);
+    if (req.url?.startsWith('/api')) return rpcServer(req, res);
   }).listen(4949);
 });
 
@@ -111,7 +111,7 @@ it('should make an rpc call (get + types)', async () => {
   expect(result.validateNum.test('1234')).toBe(true);
   expect(result.validateNum.test('john@doe')).toBe(false);
   expect(log.length).toBe(1);
-  expect(log[0].options.method.toLowerCase()).toBe('get');
+  expect(log[0].options.method?.toLowerCase()).toBe('get');
 });
 
 it('should make another rpc call (array get)', async () => {
@@ -138,7 +138,7 @@ it('should make yet another rpc call (post)', async () => {
   expect(result).toMatchSnapshot();
 
   expect(log.length).toBe(1);
-  expect(log[0].options.method.toLowerCase()).toBe('post');
+  expect(log[0].options.method?.toLowerCase()).toBe('post');
 });
 
 it('should throw in case of http error', async () => {
@@ -153,9 +153,11 @@ it('should throw in case of http error', async () => {
   } catch (e) {
     expect(isUnauthorized(e)).toBe(true);
     expect(isRPCError(e)).toBe(true);
-    expect(e.message).toEqual("'John Doe' is not authorized");
-    expect(e.type).toEqual('Unauthorized');
-    expect(e.statusCode).toBe(401);
+    if (e instanceof RPCError) {
+      expect(e.message).toEqual("'John Doe' is not authorized");
+      expect(e.type).toEqual('Unauthorized');
+      expect(e.statusCode).toBe(401);
+    }
   }
 });
 
@@ -186,9 +188,11 @@ it('should throw without details if server throws', async () => {
   } catch (e) {
     expect(isInternalServerError(e)).toBe(true);
     expect(isRPCError(e)).toBe(true);
-    expect(e.message).toEqual('Internal server error');
-    expect(e.type).toEqual('InternalServerError');
-    expect(e.statusCode).toBe(500);
+    if (e instanceof RPCError) {
+      expect(e.message).toEqual('Internal server error');
+      expect(e.type).toEqual('InternalServerError');
+      expect(e.statusCode).toBe(500);
+    }
   }
 });
 
@@ -204,9 +208,11 @@ it('should receive client-side error in case of validation error', async () => {
   } catch (e) {
     expect(isBadRequest(e)).toBe(true);
     expect(isRPCError(e)).toBe(true);
-    expect(e.message).toEqual('boo!');
-    expect(e.type).toEqual('BadRequest');
-    expect(e.statusCode).toBe(400);
+    if (e instanceof RPCError) {
+      expect(e.message).toEqual('boo!');
+      expect(e.type).toEqual('BadRequest');
+      expect(e.statusCode).toBe(400);
+    }
   }
 });
 
@@ -218,14 +224,15 @@ it('should abort if a abort signal is received', async () => {
 
   const abortController = new AbortController();
 
-  expect.assertions(3);
+  expect.assertions(2);
   try {
     const promise = client.login({ username: 'john', password: 'doe' }, { abortSignal: abortController.signal });
     abortController.abort();
     await promise;
   } catch (e) {
-    expect(e).toBeInstanceOf(Error);
-    expect(e.name).toBe('AbortError');
-    expect(e.type).toEqual('aborted');
+    if (e instanceof Error) {
+      expect(e).toBeInstanceOf(Error);
+      expect(e.name).toBe('AbortError');
+    }
   }
 });
