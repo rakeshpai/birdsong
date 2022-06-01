@@ -6,17 +6,19 @@ import {
 } from '../shared/errors';
 import type { Environment, EnvironmentHelpers } from './environments/types';
 
+type EnvHelpers = Pick<EnvironmentHelpers, 'setCookie' | 'readCookie' | 'clearCookie'>;
+
 type HttpResolverArgsWithContext<
   Context,
   Input extends RPCSerializableValue,
 > = [
   input: Input,
-  helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'> & { context: Context }
+  helpers: EnvHelpers & { context: Context }
 ];
 
 type HttpResolverArgsWithoutContext<
   Input extends RPCSerializableValue,
-> = [input: Input, helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'>];
+> = [input: Input, helpers: EnvHelpers];
 
 type HttpResolverWithContext<
   Context,
@@ -46,12 +48,12 @@ type HttpServiceMethodDescriptorWithoutContext<
   resolver: HttpResolverWithoutContext<Input, Output>;
 };
 
-type MethodWithoutContext = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+export type MethodWithoutContext = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
   validator: Validator<Input>,
   resolver: HttpResolverWithoutContext<Input, Output>
 ) => HttpServiceMethodDescriptorWithoutContext<Input, Output>;
 
-type MethodForContext<Context> = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+export type MethodForContext<Context> = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
   validator: Validator<Input>,
   resolver: HttpResolverWithContext<Context, Input, Output>
 ) => HttpServiceMethodDescriptorWithContext<Context, Input, Output>;
@@ -96,7 +98,7 @@ type HttpServerOptionsBase = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> =
   HttpServerOptionsBase & {
-    createContext: (helpers: Pick<EnvironmentHelpers, 'setCookie' | 'readCookie'>) => Context;
+    createContext: (helpers: EnvHelpers) => Context;
     service: (method: MethodForContext<Context>) => (
       Service extends {
         [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithContext<
@@ -170,7 +172,8 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
   return {
     server: async (...args: RuntimeArgs) => {
       const {
-        methodDetails, setCookie, readCookie, sendError, sendResponse
+        setCookie, readCookie, clearCookie, methodDetails,
+        sendError, sendResponse
       } = options.environment(...args);
 
       let md: {
@@ -215,14 +218,15 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         output = await (
           ('createContext' in options)
             ? method.resolver(validatedInput, {
-              context: options.createContext({ setCookie, readCookie }),
+              context: options.createContext({ setCookie, readCookie, clearCookie }),
               setCookie,
-              readCookie
+              readCookie,
+              clearCookie
             })
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             : (method.resolver as HttpResolverWithoutContext<any, any>)(
               validatedInput,
-              { setCookie, readCookie }
+              { setCookie, readCookie, clearCookie }
             )
         );
       } catch (e) {

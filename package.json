@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "files": [
+    "dist"
+  ],
   "exports": {
     "./server": "./dist/src/server/server.js",
     "./server/environments/node": "./dist/src/server/environments/node.js",

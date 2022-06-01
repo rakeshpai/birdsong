@@ -72,16 +72,14 @@ export const createClient = <T extends ServerServiceType>({ url, fetch = globalF
       const response = await fetch(...fetchOptions);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const log = (parsed: any) => {
-        logger?.({
-          url: fetchOptions[0] as string,
-          options: fetchOptions[1] as RequestInit,
-          response,
-          ok: response.ok,
-          startTime,
-          parsed
-        });
-      };
+      const log = (parsed: any) => logger?.({
+        url: fetchOptions[0] as string,
+        options: fetchOptions[1] as RequestInit,
+        response,
+        ok: response.ok,
+        startTime,
+        parsed
+      });
 
       if (!response.ok) {
         const error = await response.json();

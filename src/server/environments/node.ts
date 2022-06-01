@@ -27,6 +27,10 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
 
   const readCookie = (name: string): string | undefined => cookies[name];
 
+  const clearCookie = (name: string) => {
+    response.setHeader('Set-Cookie', cookie.serialize(name, '', { expires: new Date(0) }));
+  };
+
   const sendResponse = (output: unknown) => {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(output);
@@ -53,7 +57,7 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
   );
 
   return {
-    setCookie, readCookie, sendResponse, sendError, methodDetails
+    setCookie, readCookie, clearCookie, sendResponse, sendError, methodDetails
   };
 };
 
