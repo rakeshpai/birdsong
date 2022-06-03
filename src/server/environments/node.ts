@@ -2,9 +2,9 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import cookie from 'cookie';
 import { parse as urlParse } from 'url';
-import type { EnvironmentHelpers } from './types';
+import type { EnvironmentHelpers } from './helpers';
 import { getMethodDetails } from './helpers';
-import type { RPCError } from '../../shared/errors';
+import type { RPCError } from '../../shared/error';
 
 const nodejs = (request: IncomingMessage, response: ServerResponse): EnvironmentHelpers => {
   const cookies = cookie.parse(request.headers.cookie || '');

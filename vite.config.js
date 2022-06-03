@@ -7,7 +7,7 @@ const dts = require('vite-plugin-dts');
 module.exports = defineConfig({
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src/client/client.ts'),
+      entry: path.resolve(__dirname, 'src/client/index.ts'),
       name: 'birdsongHttpClient',
       fileName: format => `client.${format}.js`
     },

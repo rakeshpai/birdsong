@@ -1,10 +1,9 @@
 import type { MaybeAsync, RPCSerializableValue, Validator } from '../shared/types';
 import { encode } from '../shared/type-handlers';
-import type { RPCError } from '../shared/errors';
-import {
-  isRPCError, badRequest, internalServerError, methodNotFound
-} from '../shared/errors';
-import type { Environment, EnvironmentHelpers } from './environments/types';
+import type { RPCError } from '../shared/error';
+import { isRPCError } from '../shared/is-error';
+import { badRequest, internalServerError, methodNotFound } from '../shared/error-creators';
+import type { Environment, EnvironmentHelpers } from './environments/helpers';
 
 type EnvHelpers = Pick<EnvironmentHelpers, 'setCookie' | 'readCookie' | 'clearCookie'>;
 

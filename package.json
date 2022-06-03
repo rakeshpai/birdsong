@@ -2,25 +2,41 @@
   "name": "@birdsong/http",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/server/cjs/src/server/index.js",
   "files": [
     "dist"
   ],
   "exports": {
-    "./server": "./dist/src/server/server.js",
-    "./server/environments/node": "./dist/src/server/environments/node.js",
-    "./client": "./dist/src/client/client.js"
+    "./server": {
+      "require": "./dist/server/cjs/src/server/index.js",
+      "exports": "./dist/server/esm/src/server/index.js"
+    },
+    "./server/environments/node": {
+      "require": "./dist/server/cjs/src/server/environments/node.js",
+      "exports": "./dist/server/esm/src/server/environments/node.js"
+    },
+    "./server/environments": {
+      "require": "./dist/server/cjs/src/server/environments/helpers.js",
+      "exports": "./dist/server/esm/src/server/environments/helpers.js"
+    },
+    "./client": {
+      "require": "./dist/client/client.umd.js",
+      "exports": "./dist/client/client.es.js"
+    }
   },
   "typesVersions": {
     "*": {
       "server": [
-        "./dist/src/server/server.d.ts"
+        "./dist/server/esm/src/server/index.d.ts"
       ],
       "server/environments/node": [
-        "./dist/src/server/environments/node.d.ts"
+        "./dist/server/esm/src/server/environments/node.d.ts"
+      ],
+      "server/environments": [
+        "./dist/server/esm/src/server/environments/helpers.d.ts"
       ],
       "client": [
-        "./dist/src/client/client.d.ts"
+        "./dist/client/client/index.d.ts"
       ]
     }
   },

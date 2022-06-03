@@ -12,10 +12,13 @@ import node from '../server/environments/node';
 import type { Logger } from '../client/client';
 import { createClient } from '../client/client';
 import {
-  couldntParseRequest,
+  RPCError
+} from '../shared/error';
+import {
   isBadRequest,
-  isInternalServerError, isRPCError, isUnauthorized, RPCError, unauthorized
-} from '../shared/errors';
+  isInternalServerError, isRPCError, isUnauthorized
+} from '../shared/is-error';
+import { couldntParseRequest, unauthorized } from '../shared/error-creators';
 
 // #region server
 
