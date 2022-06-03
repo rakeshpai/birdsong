@@ -1,5 +1,5 @@
 {
-  "name": "@birdsong/http",
+  "name": "birdsong-http",
   "version": "1.0.0",
   "description": "",
   "main": "./dist/server/cjs/src/server/index.js",
@@ -7,21 +7,21 @@
     "dist"
   ],
   "exports": {
-    "./server": {
-      "require": "./dist/server/cjs/src/server/index.js",
-      "exports": "./dist/server/esm/src/server/index.js"
+    "./client": {
+      "import": "./dist/client/index.es.js",
+      "require": "./dist/client/index.umd.js"
     },
     "./server/environments/node": {
-      "require": "./dist/server/cjs/src/server/environments/node.js",
-      "exports": "./dist/server/esm/src/server/environments/node.js"
+      "import": "./dist/server/esm/src/server/environments/node.js",
+      "require": "./dist/server/cjs/src/server/environments/node.js"
     },
     "./server/environments": {
-      "require": "./dist/server/cjs/src/server/environments/helpers.js",
-      "exports": "./dist/server/esm/src/server/environments/helpers.js"
+      "import": "./dist/server/esm/src/server/environments/helpers.js",
+      "require": "./dist/server/cjs/src/server/environments/helpers.js"
     },
-    "./client": {
-      "require": "./dist/client/client.umd.js",
-      "exports": "./dist/client/client.es.js"
+    "./server": {
+      "import": "./dist/server/esm/src/server/index.js",
+      "require": "./dist/server/cjs/src/server/index.js"
     }
   },
   "typesVersions": {
@@ -36,7 +36,7 @@
         "./dist/server/esm/src/server/environments/helpers.d.ts"
       ],
       "client": [
-        "./dist/client/client/index.d.ts"
+        "./dist/client/index.d.ts"
       ]
     }
   },
@@ -67,7 +67,6 @@
     "ts-node": "^10.7.0",
     "typescript": "^4.6.4",
     "vite": "^2.9.9",
-    "vite-plugin-dts": "^1.2.0",
     "vitest": "^0.13.0"
   },
   "dependencies": {
