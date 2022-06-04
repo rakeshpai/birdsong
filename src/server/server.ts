@@ -172,7 +172,7 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
     server: async (...args: RuntimeArgs) => {
       const {
         setCookie, readCookie, clearCookie, methodDetails,
-        sendError, sendResponse
+        sendError, sendResponse, setHeader
       } = options.environment(...args);
 
       let md: {
@@ -245,6 +245,7 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
       options.logger?.({
         type: 'method-output', input, validatedInput, output
       });
+      setHeader('Content-Type', 'application/json');
       sendResponse(encode(output));
     },
     clientStub: {} as MethodsClientType

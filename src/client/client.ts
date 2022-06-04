@@ -6,7 +6,7 @@ import { encode, decode } from '../shared/type-handlers';
 const createGetUrl = (url: string, method: string, input: RPCSerializableValue) => {
   const u = new URL(url);
   u.searchParams.set('method', method);
-  u.searchParams.set('input', encode(input));
+  if (input !== undefined) u.searchParams.set('input', encode(input));
   return u.toString();
 };
 

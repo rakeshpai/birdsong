@@ -1,13 +1,15 @@
 import type { CookieSerializeOptions } from 'cookie';
 import { decode } from '../../shared/type-handlers';
 import type { RPCError } from '../../shared/error';
-import { noMethodSpecified } from '../../shared/error-creators';
+import { badRequest, noMethodSpecified } from '../../shared/error-creators';
 import type { RPCSerializableValue } from '../../shared/types';
 
 export type EnvironmentHelpers = {
   setCookie: (name: string, value: string, options: CookieSerializeOptions | undefined) => void;
   readCookie: (name: string) => string | undefined;
   clearCookie: (name: string) => void;
+  setHeader: (name: string, value: string) => void;
+  getHeader: (name: string) => string | undefined;
   methodDetails: () => Promise<{ name: string | null; input: unknown }>;
   sendResponse: (output: RPCSerializableValue) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,7 +35,12 @@ export const getMethodDetails = async (
     if (methodDetails.name === null) throw noMethodSpecified('Couldn\'t parse method from URL');
 
     if (isGettable(methodDetails.name)) {
-      return { name: methodDetails.name, input: methodDetails.input ? decode(methodDetails.input) : null };
+      try {
+        const inp = methodDetails.input ? decode(methodDetails.input) : undefined;
+        return { name: methodDetails.name, input: inp };
+      } catch (e) {
+        throw badRequest(`Couldn't parse input: ${(e as Error).message}`);
+      }
     }
 
     throw noMethodSpecified(`Method ${methodDetails.name} is not allowed as a GET request`);

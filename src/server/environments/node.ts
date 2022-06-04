@@ -56,8 +56,21 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
     postBody
   );
 
+  const setHeader = (name: string, value: string) => {
+    response.setHeader(name, value);
+  };
+
+  const getHeader = (name: string): string | undefined => request.headers[name] as string | undefined;
+
   return {
-    setCookie, readCookie, clearCookie, sendResponse, sendError, methodDetails
+    setCookie,
+    readCookie,
+    clearCookie,
+    setHeader,
+    getHeader,
+    sendResponse,
+    sendError,
+    methodDetails
   };
 };
 
