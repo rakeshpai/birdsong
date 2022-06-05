@@ -43,12 +43,12 @@ export type Options = Partial<{
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ServerServiceType = Record<string, any>;
 
-export type ClientType<ServiceDetails extends ServerServiceType> = {
+export type ClientType<ServiceDetails extends ServerServiceType> = Readonly<{
   [MethodName in keyof ServiceDetails]: (
     input: Parameters<ServiceDetails[MethodName]>[0],
     options?: Options
-  ) => Promise<ReturnType<ServiceDetails[MethodName]>>;
-};
+  ) => ReturnType<ServiceDetails[MethodName]>;
+}>;
 
 export const createClient = <T extends ServerServiceType>({ url, fetch = globalFetch, logger }: ClientOptions) => (
   new Proxy({}, {

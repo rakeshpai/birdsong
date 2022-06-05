@@ -7,65 +7,35 @@ import type { Environment, EnvironmentHelpers } from './environments/helpers';
 
 type EnvHelpers = Pick<EnvironmentHelpers, 'setCookie' | 'readCookie' | 'clearCookie'>;
 
-type HttpResolverArgsWithContext<
-  Context,
-  Input extends RPCSerializableValue,
-> = [
+type ResolverArgs<Context, Input extends RPCSerializableValue> = [
   input: Input,
   helpers: EnvHelpers & { context: Context }
 ];
 
-type HttpResolverArgsWithoutContext<
-  Input extends RPCSerializableValue,
-> = [input: Input, helpers: EnvHelpers];
-
-type HttpResolverWithContext<
+type Resolver<
   Context,
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue
-> = (...args: HttpResolverArgsWithContext<Context, Input>) => MaybeAsync<Output>;
+> = (...args: ResolverArgs<Context, Input>) => MaybeAsync<Output>;
 
-type HttpResolverWithoutContext<
-  Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue
-> = (...args: HttpResolverArgsWithoutContext<Input>) => MaybeAsync<Output>;
-
-type HttpServiceMethodDescriptorWithContext<
+type ServiceMethodDescriptor<
   Context,
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue
 > = {
   validator: Validator<Input>;
-  resolver: HttpResolverWithContext<Context, Input, Output>;
+  resolver: Resolver<Context, Input, Output>;
 };
 
-type HttpServiceMethodDescriptorWithoutContext<
-  Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue
-> = {
-  validator: Validator<Input>;
-  resolver: HttpResolverWithoutContext<Input, Output>;
-};
-
-export type MethodWithoutContext = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+export type Method<Context> = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
   validator: Validator<Input>,
-  resolver: HttpResolverWithoutContext<Input, Output>
-) => HttpServiceMethodDescriptorWithoutContext<Input, Output>;
+  resolver: Resolver<Context, Input, Output>
+) => ServiceMethodDescriptor<Context, Input, Output>;
 
-export type MethodForContext<Context> = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+const method = <Context>() => <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
   validator: Validator<Input>,
-  resolver: HttpResolverWithContext<Context, Input, Output>
-) => HttpServiceMethodDescriptorWithContext<Context, Input, Output>;
-
-const methodForContext = <Context>() => <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
-  validator: Validator<Input>,
-  resolver: HttpResolverWithContext<Context, Input, Output>
-): HttpServiceMethodDescriptorWithContext<Context, Input, Output> => ({ validator, resolver });
-
-const methodWithoutContext = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
-  validator: Validator<Input>,
-  resolver: HttpResolverWithoutContext<Input, Output>
-): HttpServiceMethodDescriptorWithoutContext<Input, Output> => ({ validator, resolver });
+  resolver: Resolver<Context, Input, Output>
+): ServiceMethodDescriptor<Context, Input, Output> => ({ validator, resolver });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
@@ -88,22 +58,22 @@ export type LogLine =
   | {
     type: 'validation-passed'; methodName: string; input: any; validatedInput: any;
   };
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
-type HttpServerOptionsBase = {
+type ServerOptionsBase = {
   logger?: (log: LogLine) => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> =
-  HttpServerOptionsBase & {
-    createContext: (helpers: EnvHelpers) => Context;
-    service: (method: MethodForContext<Context>) => (
+type ServerOptions<Context, Service extends Record<string, ServiceMethodDescriptor<Context, any, any>>, RuntimeArgs extends any[]> =
+  ServerOptionsBase & {
+    createContext?: (helpers: EnvHelpers) => Context;
+    service: (method: Method<Context>) => (
       Service extends {
-        [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithContext<
+        [methodName in keyof Service]: Service[methodName] extends ServiceMethodDescriptor<
           Context, infer Input, infer Output
         >
-          ? HttpServiceMethodDescriptorWithContext<Context, Input, Output>
+          ? ServiceMethodDescriptor<Context, Input, Output>
           : never
       }
         ? Service
@@ -113,60 +83,15 @@ type HttpServerOptionsWithContext<Context, Service, RuntimeArgs extends any[]> =
   };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HttpServerOptionsWithoutContext<Service, RuntimeArgs extends any[]> =
-  HttpServerOptionsBase & {
-    service: (method: MethodWithoutContext) => (
-      Service extends {
-        [methodName in keyof Service]: Service[methodName] extends HttpServiceMethodDescriptorWithoutContext<
-          infer Input, infer Output
-        >
-          ? HttpServiceMethodDescriptorWithoutContext<Input, Output>
-          : never
-      }
-        ? Service
-        : never
-    );
-    environment: Environment<RuntimeArgs>;
-  };
+const httpServer = <Context, Service extends Record<string, ServiceMethodDescriptor<Context, any, any>>, RuntimeArgs extends any[]>(
+  options: ServerOptions<Context, Service, RuntimeArgs>
+) => {
+  const methods = options.service(method<Context>());
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HttpServerReturnType<RuntimeArgs extends any[], Methods> = {
-  server: (...args: RuntimeArgs) => void;
-  clientStub: {
-    [methodName in keyof Methods]:
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Methods[methodName] extends HttpServiceMethodDescriptorWithContext<any, infer Input, infer Output>
-      ? (input: Input) => Promise<Output>
-      : Methods[methodName] extends HttpServiceMethodDescriptorWithoutContext<infer Input, infer Output>
-        ? (input: Input) => Promise<Output>
-        : never
-
-  };
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function httpServer<Context, Service, RuntimeArgs extends any[]>(
-  options: HttpServerOptionsWithContext<Context, Service, RuntimeArgs>
-): HttpServerReturnType<RuntimeArgs, Service>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function httpServer<Service, RuntimeArgs extends any[]>(
-  options: HttpServerOptionsWithoutContext<Service, RuntimeArgs>
-): HttpServerReturnType<RuntimeArgs, Service>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function httpServer<Context, Service, RuntimeArgs extends any[]>(
-  options: HttpServerOptionsWithContext<Context, Service, RuntimeArgs> | HttpServerOptionsWithoutContext<Service, RuntimeArgs>
-) {
-  const methods = ('createContext' in options)
-    ? options.service(methodForContext<Context>())
-    : options.service(methodWithoutContext);
-
-  type MethodsClientType = {
-    [key in keyof Service]:
-    Service[key] extends MethodWithoutContext | MethodForContext<Context>
-      ? (input: ReturnType<ReturnType<Service[key]>['validator']>)
-      => Promise<ReturnType<ReturnType<Service[key]>['resolver']>>
-      : never
-  };
+  type MethodsClientType = Readonly<{
+    [key in keyof Service]: (input: Awaited<ReturnType<Service[key]['validator']>>)
+    => Promise<Awaited<ReturnType<Service[key]['resolver']>>>
+  }>;
 
   return {
     server: async (...args: RuntimeArgs) => {
@@ -211,35 +136,29 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
         type: 'validation-passed', methodName: methodName!, input, validatedInput
       });
 
+      const createContext = options.createContext || (() => ({} as Context));
       let output: RPCSerializableValue;
       try {
         // eslint-disable-next-line prefer-const
         output = await (
-          ('createContext' in options)
-            ? method.resolver(validatedInput, {
-              context: options.createContext({ setCookie, readCookie, clearCookie }),
-              setCookie,
-              readCookie,
-              clearCookie
-            })
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            : (method.resolver as HttpResolverWithoutContext<any, any>)(
-              validatedInput,
-              { setCookie, readCookie, clearCookie }
-            )
+          method.resolver(validatedInput, {
+            context: createContext({ setCookie, readCookie, clearCookie }),
+            setCookie,
+            readCookie,
+            clearCookie
+          })
         );
       } catch (e) {
         if (isRPCError(e)) {
           options.logger?.({
             type: 'error-resolve-method-rpc', input, validatedInput, error: e
           });
-          sendError(e);
-        } else {
-          options.logger?.({
-            type: 'error-resolve-method-unknown', input, validatedInput, error: e
-          });
-          return sendError(internalServerError('Internal server error'));
+          return sendError(e);
         }
+        options.logger?.({
+          type: 'error-resolve-method-unknown', input, validatedInput, error: e
+        });
+        return sendError(internalServerError('Internal server error'));
       }
 
       options.logger?.({
@@ -250,6 +169,6 @@ function httpServer<Context, Service, RuntimeArgs extends any[]>(
     },
     clientStub: {} as MethodsClientType
   };
-}
+};
 
 export default httpServer;

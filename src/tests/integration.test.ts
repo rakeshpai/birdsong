@@ -26,7 +26,7 @@ const { server: rpcServer, clientStub } = httpServer({
   environment: node,
   service: method => ({
     getUser: method(
-      value => value as { id: number },
+      async value => value as { id: number },
       ({ id }) => ({
         id,
         name: 'John Doe',
@@ -63,11 +63,12 @@ const { server: rpcServer, clientStub } = httpServer({
       }
     ),
     throws: method(
-      value => value as { name: string },
+      value => value as void,
       async () => { throw new Error('Barf'); }
     ),
     validationFails: method(
-      () => { throw couldntParseRequest('boo!'); },
+      // eslint-disable-next-line no-constant-condition, no-self-compare
+      () => { if (1 === 1) throw couldntParseRequest('boo!'); },
       () => true
     )
   })
@@ -187,7 +188,7 @@ it('should throw without details if server throws', async () => {
 
   expect.assertions(5);
   try {
-    await client.throws({ name: 'John Doe' });
+    await client.throws();
   } catch (e) {
     expect(isInternalServerError(e)).toBe(true);
     expect(isRPCError(e)).toBe(true);
