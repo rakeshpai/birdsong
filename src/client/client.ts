@@ -44,10 +44,13 @@ export type Options = Partial<{
 type ServerServiceType = Record<string, any>;
 
 export type ClientType<ServiceDetails extends ServerServiceType> = Readonly<{
-  [MethodName in keyof ServiceDetails]: (
-    input: Parameters<ServiceDetails[MethodName]>[0],
-    options?: Options
-  ) => ReturnType<ServiceDetails[MethodName]>;
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  [MethodName in keyof ServiceDetails]: ServiceDetails[MethodName] extends Function
+    ? (
+      input: Parameters<ServiceDetails[MethodName]>[0],
+      options?: Options
+    ) => ReturnType<ServiceDetails[MethodName]>
+    : ClientType<ServiceDetails[MethodName]>
 }>;
 
 export const createClient = <T extends ServerServiceType>({ url, fetch = globalFetch, logger }: ClientOptions) => (

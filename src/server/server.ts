@@ -61,35 +61,53 @@ type ServerOptionsBase = {
   logger?: (log: LogLine) => void;
 };
 
-export type Methods<Context, Service> = (method: Method<Context>) => (
-  Service extends {
-    [methodName in keyof Service]: Service[methodName] extends ServiceMethodDescriptor<
+type Service<Context, TService> = (
+  TService extends {
+    [methodName in keyof TService]: TService[methodName] extends ServiceMethodDescriptor<
       Context, infer Input, infer Output
     >
       ? ServiceMethodDescriptor<Context, Input, Output>
-      : never
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : TService[methodName] extends Service<Context, any>
+        ? Service<Context, TService[methodName]>
+        : never
   }
-    ? Service
+    ? TService
     : never
 );
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ServerOptions<Context, Service extends Record<string, ServiceMethodDescriptor<Context, any, any>>, RuntimeArgs extends any[]> =
+export type Methods<Context, TService> = (method: Method<Context>) => Service<Context, TService>;
+
+type ServerOptions<
+  Context,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  TService extends Record<string, ServiceMethodDescriptor<Context, any, any> | Service<Context, any>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RuntimeArgs extends any[]
+> =
   ServerOptionsBase & {
     createContext?: (helpers: EnvHelpers) => Context;
-    service: Methods<Context, Service>;
+    service: Methods<Context, TService>;
     environment: Environment<RuntimeArgs>;
   };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const httpServer = <Context, Service extends Record<string, ServiceMethodDescriptor<Context, any, any>>, RuntimeArgs extends any[]>(
-  options: ServerOptions<Context, Service, RuntimeArgs>
+const httpServer = <
+  Context,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  TService extends Record<string, ServiceMethodDescriptor<Context, any, any> | Service<Context, any>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RuntimeArgs extends any[]
+>(
+  options: ServerOptions<Context, TService, RuntimeArgs>
 ) => {
   const methods = options.service(method<Context>());
 
-  type MethodsClientType = Readonly<{
-    [key in keyof Service]: (input: Awaited<ReturnType<Service[key]['validator']>>)
-    => Promise<Awaited<ReturnType<Service[key]['resolver']>>>
+  type MethodsClientType<TS> = Readonly<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key in keyof TS]: TS[key] extends ServiceMethodDescriptor<Context, any, any>
+      ? (input: Awaited<ReturnType<TS[key]['validator']>>)
+      => Promise<Awaited<ReturnType<TS[key]['resolver']>>>
+      : MethodsClientType<TS[key]>
   }>;
 
   return {
@@ -166,7 +184,7 @@ const httpServer = <Context, Service extends Record<string, ServiceMethodDescrip
       setHeader('Content-Type', 'application/json');
       sendResponse(encode(output));
     },
-    clientStub: {} as MethodsClientType
+    clientStub: {} as MethodsClientType<TService>
   };
 };
 
