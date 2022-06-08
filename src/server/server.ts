@@ -32,10 +32,7 @@ export type Method<Context> = <Input extends RPCSerializableValue, Output extend
   resolver: Resolver<Context, Input, Output>
 ) => ServiceMethodDescriptor<Context, Input, Output>;
 
-const method = <Context>() => <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
-  validator: Validator<Input>,
-  resolver: Resolver<Context, Input, Output>
-): ServiceMethodDescriptor<Context, Input, Output> => ({ validator, resolver });
+const method = <Context>(): Method<Context> => (validator, resolver) => ({ validator, resolver });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
@@ -64,21 +61,23 @@ type ServerOptionsBase = {
   logger?: (log: LogLine) => void;
 };
 
+export type Methods<Context, Service> = (method: Method<Context>) => (
+  Service extends {
+    [methodName in keyof Service]: Service[methodName] extends ServiceMethodDescriptor<
+      Context, infer Input, infer Output
+    >
+      ? ServiceMethodDescriptor<Context, Input, Output>
+      : never
+  }
+    ? Service
+    : never
+);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ServerOptions<Context, Service extends Record<string, ServiceMethodDescriptor<Context, any, any>>, RuntimeArgs extends any[]> =
   ServerOptionsBase & {
     createContext?: (helpers: EnvHelpers) => Context;
-    service: (method: Method<Context>) => (
-      Service extends {
-        [methodName in keyof Service]: Service[methodName] extends ServiceMethodDescriptor<
-          Context, infer Input, infer Output
-        >
-          ? ServiceMethodDescriptor<Context, Input, Output>
-          : never
-      }
-        ? Service
-        : never
-    );
+    service: Methods<Context, Service>;
     environment: Environment<RuntimeArgs>;
   };
 

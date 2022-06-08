@@ -1,30 +1,58 @@
 /* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/no-redeclare */
-import {
-  it, beforeAll, afterAll, expect
-} from 'vitest';
+import { it, expect } from 'vitest';
 import { expectType } from 'ts-expect';
 import http from 'http';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
+import type { Methods } from '../server/server';
 import httpServer from '../server/server';
 import node from '../server/environments/node';
 import type { Logger } from '../client/client';
 import { createClient } from '../client/client';
-import {
-  RPCError
-} from '../shared/error';
+import { RPCError } from '../shared/error';
 import {
   isBadRequest,
   isInternalServerError, isRPCError, isUnauthorized
 } from '../shared/is-error';
 import { couldntParseRequest, unauthorized } from '../shared/error-creators';
 
-// #region server
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const setup = async <Context, Service extends Record<string, any>>(
+  methods: Methods<Context, Service>
+) => {
+  const { server: rpcServer, clientStub } = httpServer({
+    environment: node,
+    service: methods
+  });
 
-const { server: rpcServer, clientStub } = httpServer({
-  environment: node,
-  service: method => ({
+  const server: http.Server = await new Promise(resolve => {
+    const s = http.createServer((req, res) => {
+      if (req.url?.startsWith('/api')) return rpcServer(req, res);
+    });
+    s.listen(4951, () => {
+      resolve(s);
+    });
+  });
+
+  const log: Parameters<Logger>[0][] = [];
+  const client = createClient<typeof clientStub>({
+    url: 'http://localhost:4951/api',
+    fetch: fetch as unknown as FetchType,
+    logger: l => log.push(l)
+  });
+
+  return {
+    stopServer: () => server.close(),
+    client,
+    log
+  };
+};
+
+type FetchType = Parameters<typeof createClient>[0]['fetch'];
+
+it('should make an rpc call (get + types)', async () => {
+  const { client, log, stopServer } = await setup(method => ({
     getUser: method(
       async value => value as { id: number },
       ({ id }) => ({
@@ -40,65 +68,8 @@ const { server: rpcServer, clientStub } = httpServer({
           ])
         }
       })
-    ),
-    getUserTypes: method(
-      value => value as number,
-      () => ['home', 'work', 'other']
-    ),
-    saveUser: method(
-      value => value as { name: string },
-      async ({ name }) => `'${name}' saved`
-    ),
-    accessSecret: method(
-      value => value as { name: string },
-      async ({ name }) => {
-        throw unauthorized(`'${name}' is not authorized`);
-      }
-    ),
-    login: method(
-      value => value as { username: string; password: string },
-      async (input, { setCookie }) => {
-        setCookie('token', '123456', { httpOnly: true });
-        return 'Logged in';
-      }
-    ),
-    throws: method(
-      value => value as void,
-      async () => { throw new Error('Barf'); }
-    ),
-    validationFails: method(
-      // eslint-disable-next-line no-constant-condition, no-self-compare
-      () => { if (1 === 1) throw couldntParseRequest('boo!'); },
-      () => true
     )
-  })
-});
-
-let server: http.Server;
-
-beforeAll(() => {
-  server = http.createServer((req, res) => {
-    if (req.url?.startsWith('/api')) return rpcServer(req, res);
-  }).listen(4949);
-});
-
-afterAll(() => {
-  server.close();
-});
-
-type GreatService = typeof clientStub;
-
-// #endregion
-
-type FetchType = Parameters<typeof createClient>[0]['fetch'];
-
-it('should make an rpc call (get + types)', async () => {
-  const log: Parameters<Logger>[0][] = [];
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType,
-    logger: l => log.push(l)
-  });
+  }));
 
   const result = await client.getUser({ id: 1 });
   expectType<{
@@ -116,26 +87,32 @@ it('should make an rpc call (get + types)', async () => {
   expect(result.validateNum.test('john@doe')).toBe(false);
   expect(log.length).toBe(1);
   expect(log[0].options.method?.toLowerCase()).toBe('get');
+
+  stopServer();
 });
 
 it('should make another rpc call (array get)', async () => {
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType
-  });
+  const { client, stopServer } = await setup(method => ({
+    getUserTypes: method(
+      async value => value as void,
+      () => ['home', 'work', 'other']
+    )
+  }));
 
-  const result = await client.getUserTypes(5);
+  const result = await client.getUserTypes();
   expectType<string[]>(result);
   expect(result).toMatchSnapshot();
+
+  stopServer();
 });
 
 it('should make yet another rpc call (post)', async () => {
-  const log: Parameters<Logger>[0][] = [];
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType,
-    logger: l => log.push(l)
-  });
+  const { client, stopServer, log } = await setup(method => ({
+    saveUser: method(
+      value => value as { name: string },
+      async ({ name }) => `'${name}' saved`
+    )
+  }));
 
   const result = await client.saveUser({ name: 'John Doe' });
   expectType<string>(result);
@@ -143,13 +120,19 @@ it('should make yet another rpc call (post)', async () => {
 
   expect(log.length).toBe(1);
   expect(log[0].options.method?.toLowerCase()).toBe('post');
+
+  stopServer();
 });
 
 it('should throw in case of http error', async () => {
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType
-  });
+  const { client, stopServer } = await setup(method => ({
+    accessSecret: method(
+      value => value as { name: string },
+      async ({ name }) => {
+        throw unauthorized(`'${name}' is not authorized`);
+      }
+    )
+  }));
 
   expect.assertions(5);
   try {
@@ -163,28 +146,37 @@ it('should throw in case of http error', async () => {
       expect(e.statusCode).toBe(401);
     }
   }
+
+  stopServer();
 });
 
 it('should set a cookie', async () => {
-  const log: Parameters<Logger>[0][] = [];
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType,
-    logger: l => log.push(l)
-  });
+  const { client, stopServer, log } = await setup(method => ({
+    login: method(
+      value => value as { username: string; password: string },
+      async (input, { setCookie }) => {
+        setCookie('token', '123456', { httpOnly: true });
+        return 'Logged in';
+      }
+    )
+  }));
 
   await client.login({ username: 'john', password: 'doe' });
   expect(log.length).toBe(1);
   expect((log[0].response as unknown as Response).headers.raw()['set-cookie']).toEqual([
     'token=123456'
   ]);
+
+  stopServer();
 });
 
 it('should throw without details if server throws', async () => {
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType
-  });
+  const { client, stopServer } = await setup(method => ({
+    throws: method(
+      value => value as void,
+      async () => { throw new Error('Barf'); }
+    )
+  }));
 
   expect.assertions(5);
   try {
@@ -198,13 +190,18 @@ it('should throw without details if server throws', async () => {
       expect(e.statusCode).toBe(500);
     }
   }
+
+  stopServer();
 });
 
 it('should receive client-side error in case of validation error', async () => {
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType
-  });
+  const { client, stopServer } = await setup(method => ({
+    validationFails: method(
+      // eslint-disable-next-line no-constant-condition, no-self-compare
+      () => { if (1 === 1) throw couldntParseRequest('boo!'); },
+      () => true
+    )
+  }));
 
   expect.assertions(5);
   try {
@@ -218,13 +215,20 @@ it('should receive client-side error in case of validation error', async () => {
       expect(e.statusCode).toBe(400);
     }
   }
+
+  stopServer();
 });
 
 it('should abort if a abort signal is received', async () => {
-  const client = createClient<GreatService>({
-    url: 'http://localhost:4949/api',
-    fetch: fetch as unknown as FetchType
-  });
+  const { client, stopServer } = await setup(method => ({
+    login: method(
+      value => value as { username: string; password: string },
+      async (input, { setCookie }) => {
+        setCookie('token', '123456', { httpOnly: true });
+        return 'Logged in';
+      }
+    )
+  }));
 
   const abortController = new AbortController();
 
@@ -239,4 +243,6 @@ it('should abort if a abort signal is received', async () => {
       expect(e.name).toBe('AbortError');
     }
   }
+
+  stopServer();
 });

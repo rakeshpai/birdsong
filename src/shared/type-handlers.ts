@@ -5,7 +5,7 @@ const typeFieldName = '__bst__';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Dencode<T> = {
   canEncode: (value: any) => boolean;
-  encode: (value: any) => any;
+  encode: (value: any) => RPCSerializableValue;
   canDecode: (value: any) => boolean;
   decode: (value: T) => any;
 };
@@ -41,32 +41,48 @@ const dateType: Dencode<Date> = {
   decode: value => new Date(value)
 };
 
-const regexpType: Dencode<RegExp> = {
-  canEncode: value => Boolean(value && value.constructor === RegExp),
-  encode: value => createType('regexp', value.toString()),
-  ...parseType('regexp', value => {
+const createTypeHandler = <T>(
+  name: string,
+  canEncode: Dencode<T>['canEncode'],
+  encode: Dencode<T>['encode'],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  decode: (value: any) => any
+): Dencode<T> => ({
+  canEncode,
+  encode: (value: RPCSerializableValue) => createType(name, encode(value)),
+  ...parseType(name, decode)
+});
+
+const regexpType = createTypeHandler<RegExp>(
+  'regexp',
+  value => typeof value === 'object' && value instanceof RegExp,
+  value => value.toString(),
+  value => {
     const m = value.match(/\/(.*)\/(.*)?/);
     return new RegExp(m[1], m[2] || '');
-  })
-};
+  }
+);
 
-const mapType: Dencode<Map<string | number | boolean, RPCSerializableValue>> = {
-  canEncode: value => Boolean(value && value.constructor === Map),
-  encode: value => createType('map', [...value.entries()]),
-  ...parseType('map', value => new Map(value))
-};
+const mapType = createTypeHandler<Map<string | number | boolean, RPCSerializableValue>>(
+  'map',
+  value => Boolean(value && value.constructor === Map),
+  value => [...value.entries()],
+  value => new Map(value)
+);
 
-const setType: Dencode<Set<RPCSerializableValue>> = {
-  canEncode: value => Boolean(value && value.constructor === Set),
-  encode: value => createType('set', [...value]),
-  ...parseType('set', value => new Set(value))
-};
+const setType = createTypeHandler<Set<RPCSerializableValue>>(
+  'set',
+  value => Boolean(value && value.constructor === Set),
+  value => [...value],
+  value => new Set(value)
+);
 
-const bigIntType: Dencode<BigInt> = {
-  canEncode: value => Boolean(value && typeof value === 'bigint'),
-  encode: value => createType('bigint', value.toString()),
-  ...parseType('bigint', value => BigInt(value))
-};
+const bigIntType = createTypeHandler<BigInt>(
+  'bigint',
+  value => value && typeof value === 'bigint',
+  value => value.toString(),
+  value => BigInt(value)
+);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const dencoders: Dencode<any>[] = [
