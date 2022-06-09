@@ -30,9 +30,7 @@ const setup = async <Context, Service extends Record<string, any>>(
     const s = http.createServer((req, res) => {
       if (req.url?.startsWith('/api')) return rpcServer(req, res);
     });
-    s.listen(4951, () => {
-      resolve(s);
-    });
+    s.listen(4951, () => { resolve(s); });
   });
 
   const log: Parameters<Logger>[0][] = [];
@@ -42,11 +40,7 @@ const setup = async <Context, Service extends Record<string, any>>(
     logger: l => log.push(l)
   });
 
-  return {
-    stopServer: () => server.close(),
-    client,
-    log
-  };
+  return { stopServer: () => server.close(), client, log };
 };
 
 type FetchType = Parameters<typeof createClient>[0]['fetch'];
