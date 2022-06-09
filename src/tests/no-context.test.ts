@@ -17,9 +17,11 @@ import {
 } from '../shared/is-error';
 import { couldntParseRequest, unauthorized } from '../shared/error-creators';
 
+type FetchType = Parameters<typeof createClient>[0]['fetch'];
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const setup = async <Context, Service extends Record<string, any>>(
-  methods: Methods<Context, Service>
+const setup = async <Service extends Record<string, any>>(
+  methods: Methods<Service>
 ) => {
   const { server: rpcServer, clientStub } = httpServer({
     environment: node,
@@ -42,8 +44,6 @@ const setup = async <Context, Service extends Record<string, any>>(
 
   return { stopServer: () => server.close(), client, log };
 };
-
-type FetchType = Parameters<typeof createClient>[0]['fetch'];
 
 it('should make an rpc call (get + types)', async () => {
   const { client, log, stopServer } = await setup(method => ({

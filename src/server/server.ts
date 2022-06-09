@@ -7,32 +7,30 @@ import type { Environment, EnvironmentHelpers } from './environments/helpers';
 
 type EnvHelpers = Pick<EnvironmentHelpers, 'setCookie' | 'readCookie' | 'clearCookie'>;
 
-type ResolverArgs<Context, Input extends RPCSerializableValue> = [
+type ResolverArgs<Input extends RPCSerializableValue> = [
   input: Input,
-  helpers: EnvHelpers & { context: Context }
+  helpers: EnvHelpers
 ];
 
 type Resolver<
-  Context,
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue
-> = (...args: ResolverArgs<Context, Input>) => MaybeAsync<Output>;
+> = (...args: ResolverArgs<Input>) => MaybeAsync<Output>;
 
 type ServiceMethodDescriptor<
-  Context,
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue
 > = {
   validator: Validator<Input>;
-  resolver: Resolver<Context, Input, Output>;
+  resolver: Resolver<Input, Output>;
 };
 
-export type Method<Context> = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+export type Method = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
   validator: Validator<Input>,
-  resolver: Resolver<Context, Input, Output>
-) => ServiceMethodDescriptor<Context, Input, Output>;
+  resolver: Resolver<Input, Output>
+) => ServiceMethodDescriptor<Input, Output>;
 
-const method = <Context>(): Method<Context> => (validator, resolver) => ({ validator, resolver });
+const method = (): Method => (validator, resolver) => ({ validator, resolver });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
@@ -61,50 +59,47 @@ type ServerOptionsBase = {
   logger?: (log: LogLine) => void;
 };
 
-type Service<Context, TService> = (
+type Service<TService> = (
   TService extends {
     [methodName in keyof TService]: TService[methodName] extends ServiceMethodDescriptor<
-      Context, infer Input, infer Output
+      infer Input, infer Output
     >
-      ? ServiceMethodDescriptor<Context, Input, Output>
+      ? ServiceMethodDescriptor<Input, Output>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      : TService[methodName] extends Service<Context, any>
-        ? Service<Context, TService[methodName]>
+      : TService[methodName] extends Service<any>
+        ? Service<TService[methodName]>
         : never
   }
     ? TService
     : never
 );
 
-export type Methods<Context, TService> = (method: Method<Context>) => Service<Context, TService>;
+export type Methods<TService> = (method: Method) => Service<TService>;
 
 type ServerOptions<
-  Context,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TService extends Record<string, ServiceMethodDescriptor<Context, any, any> | Service<Context, any>>,
+  TService extends Record<string, ServiceMethodDescriptor<any, any> | Service<any>>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RuntimeArgs extends any[]
 > =
   ServerOptionsBase & {
-    createContext?: (helpers: EnvHelpers) => Context;
-    service: Methods<Context, TService>;
+    service: Methods<TService>;
     environment: Environment<RuntimeArgs>;
   };
 
 const httpServer = <
-  Context,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TService extends Record<string, ServiceMethodDescriptor<Context, any, any> | Service<Context, any>>,
+  TService extends Record<string, ServiceMethodDescriptor<any, any> | Service<any>>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RuntimeArgs extends any[]
 >(
-  options: ServerOptions<Context, TService, RuntimeArgs>
+  options: ServerOptions<TService, RuntimeArgs>
 ) => {
-  const methods = options.service(method<Context>());
+  const methods = options.service(method());
 
   type MethodsClientType<TS> = Readonly<{
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key in keyof TS]: TS[key] extends ServiceMethodDescriptor<Context, any, any>
+    [key in keyof TS]: TS[key] extends ServiceMethodDescriptor<any, any>
       ? (input: Awaited<ReturnType<TS[key]['validator']>>)
       => Promise<Awaited<ReturnType<TS[key]['resolver']>>>
       : MethodsClientType<TS[key]>
@@ -112,10 +107,11 @@ const httpServer = <
 
   return {
     server: async (...args: RuntimeArgs) => {
+      const env = options.environment(...args);
       const {
         setCookie, readCookie, clearCookie, methodDetails,
         sendError, sendResponse, setHeader
-      } = options.environment(...args);
+      } = env;
 
       let md: {
         name: string | null;
@@ -153,13 +149,11 @@ const httpServer = <
         type: 'validation-passed', methodName: methodName!, input, validatedInput
       });
 
-      const createContext = options.createContext || (() => ({} as Context));
       let output: RPCSerializableValue;
       try {
         // eslint-disable-next-line prefer-const
         output = await (
           method.resolver(validatedInput, {
-            context: createContext({ setCookie, readCookie, clearCookie }),
             setCookie,
             readCookie,
             clearCookie

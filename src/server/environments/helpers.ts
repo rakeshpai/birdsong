@@ -5,7 +5,7 @@ import { badRequest, noMethodSpecified } from '../../shared/error-creators';
 import type { RPCSerializableValue } from '../../shared/types';
 
 export type EnvironmentHelpers = {
-  setCookie: (name: string, value: string, options: CookieSerializeOptions | undefined) => void;
+  setCookie: (name: string, value: string, options?: CookieSerializeOptions) => void;
   readCookie: (name: string) => string | undefined;
   clearCookie: (name: string) => void;
   setHeader: (name: string, value: string) => void;
