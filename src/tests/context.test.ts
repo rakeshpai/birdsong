@@ -11,7 +11,7 @@ import type { Logger } from '../client/client';
 
 type FetchType = Parameters<typeof createClient>[0]['fetch'];
 
-it('should handle context correctly', async () => {
+it.skip('should handle context correctly', async () => {
   const { server: rpcServer, clientStub } = httpServer({
     environment: nodejs,
     service: method => ({

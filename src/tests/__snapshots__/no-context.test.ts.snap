@@ -1,6 +1,6 @@
 // Vitest Snapshot v1
 
-exports[`should make an rpc call (get + types) 1`] = `
+exports[`should make an rpc call (get + all the types) 1`] = `
 {
   "dateOfBirth": 1980-01-01T00:00:00.000Z,
   "id": 1,

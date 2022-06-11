@@ -105,6 +105,22 @@ const httpServer = <
       : MethodsClientType<TS[key]>
   }>;
 
+  const getMethod = (methodPath: string) => {
+    const path = methodPath.split('.');
+    let index = 0;
+    let current = methods;
+
+    while (index < path.length) {
+      if (current[path[index]] === undefined) {
+        return undefined;
+      }
+      current = current[path[index]];
+      index += 1;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return current as unknown as ServiceMethodDescriptor<any, any>;
+  };
+
   return {
     server: async (...args: RuntimeArgs) => {
       const env = options.environment(...args);
@@ -128,7 +144,12 @@ const httpServer = <
       const { name: methodName, input } = md;
       options.logger?.({ type: 'method-description', methodName, input });
 
-      const method = methods[methodName as keyof typeof methods];
+      if (methodName === null) {
+        options.logger?.({ type: 'error-method-not-found', methodName, input });
+        return sendError(methodNotFound(`Method not found: ${methodName}`));
+      }
+
+      const method = getMethod(methodName);
 
       if (!method) {
         options.logger?.({ type: 'error-method-not-found', methodName, input });
@@ -183,3 +204,5 @@ const httpServer = <
 };
 
 export default httpServer;
+
+export const noInput = (value: unknown) => (value as void);

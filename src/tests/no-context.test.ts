@@ -6,7 +6,7 @@ import http from 'http';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
 import type { Methods } from '../server/server';
-import httpServer from '../server/server';
+import httpServer, { noInput } from '../server/server';
 import node from '../server/environments/node';
 import type { Logger } from '../client/client';
 import { createClient } from '../client/client';
@@ -16,6 +16,24 @@ import {
   isInternalServerError, isRPCError, isUnauthorized
 } from '../shared/is-error';
 import { couldntParseRequest, unauthorized } from '../shared/error-creators';
+
+it('should throw if server can\'t be reached', async () => {
+  type DummyClientStub = {
+    foo: () => Promise<void>;
+  };
+
+  const client = createClient<DummyClientStub>({
+    url: 'http://localhost:4951/api',
+    fetch: fetch as unknown as FetchType
+  });
+
+  expect.assertions(1);
+  try {
+    await client.foo(undefined);
+  } catch (e) {
+    expect(e).toBeInstanceOf(Error);
+  }
+});
 
 type FetchType = Parameters<typeof createClient>[0]['fetch'];
 
@@ -45,7 +63,7 @@ const setup = async <Service extends Record<string, any>>(
   return { stopServer: () => server.close(), client, log };
 };
 
-it('should make an rpc call (get + types)', async () => {
+it('should make an rpc call (get + all the types)', async () => {
   const { client, log, stopServer } = await setup(method => ({
     getUser: method(
       async value => value as { id: number },
@@ -88,7 +106,7 @@ it('should make an rpc call (get + types)', async () => {
 it('should make another rpc call (array get)', async () => {
   const { client, stopServer } = await setup(method => ({
     getUserTypes: method(
-      async value => value as void,
+      noInput,
       () => ['home', 'work', 'other']
     )
   }));
@@ -103,7 +121,7 @@ it('should make another rpc call (array get)', async () => {
 it('should make yet another rpc call (post)', async () => {
   const { client, stopServer, log } = await setup(method => ({
     saveUser: method(
-      value => value as { name: string },
+      async value => value as { name: string },
       async ({ name }) => `'${name}' saved`
     )
   }));
@@ -167,7 +185,7 @@ it('should set a cookie', async () => {
 it('should throw without details if server throws', async () => {
   const { client, stopServer } = await setup(method => ({
     throws: method(
-      value => value as void,
+      noInput,
       async () => { throw new Error('Barf'); }
     )
   }));
@@ -237,6 +255,63 @@ it('should abort if a abort signal is received', async () => {
       expect(e.name).toBe('AbortError');
     }
   }
+
+  stopServer();
+});
+
+it('should make calls with nested objects', async () => {
+  const { client, stopServer } = await setup(method => ({
+    foo: {
+      bar: method(
+        noInput,
+        async () => 'bar called'
+      ),
+      baz: {
+        qux: method(
+          noInput,
+          async () => 'qux called'
+        )
+      },
+      qux: {
+        quux: {
+          corge: method(
+            noInput,
+            async () => 'corge called'
+          )
+        }
+      }
+    },
+    l1: {
+      l2: {
+        l3: {
+          l4: {
+            l5: {
+              l6: method(
+                value => value as string,
+                async value => `${value} called`
+              )
+            }
+          }
+        }
+      }
+    }
+  }));
+
+  const result1 = await client.foo.bar();
+  expectType<string>(result1);
+  expect(result1).toBe('bar called');
+
+  const result2 = await client.foo.baz.qux();
+  expectType<string>(result2);
+  expect(result2).toBe('qux called');
+
+  const result3 = await client.foo.qux.quux.corge();
+  expectType<string>(result3);
+  expect(result3).toBe('corge called');
+
+  const result4 = await client.l1.l2.l3.l4.l5.l6('foo');
+  expectType<string>(result4);
+  expect(result4).toBe('foo called');
 
   stopServer();
 });
