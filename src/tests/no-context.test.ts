@@ -261,6 +261,10 @@ it('should abort if a abort signal is received', async () => {
 
 it('should make calls with nested objects', async () => {
   const { client, stopServer } = await setup(method => ({
+    bare: method(
+      noInput,
+      () => 'bare called'
+    ),
     foo: {
       bar: method(
         noInput,
@@ -312,6 +316,10 @@ it('should make calls with nested objects', async () => {
   const result4 = await client.l1.l2.l3.l4.l5.l6('foo');
   expectType<string>(result4);
   expect(result4).toBe('foo called');
+
+  const result5 = await client.bare();
+  expectType<string>(result5);
+  expect(result5).toBe('bare called');
 
   stopServer();
 });

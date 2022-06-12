@@ -38,6 +38,8 @@ export type LogLine = {
   url: string;
   options: RequestInit;
   response: Response;
+  methodName: string;
+  input: RPCSerializableValue;
   ok: boolean;
   startTime: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,7 +85,7 @@ export const createClient = <T extends ServerServiceType>({ url, fetch = globalF
     const handler = (prop: string) => {
       const innerHandler = async (input: RPCSerializableValue, options: Options = {}) => {
         const startTime = Date.now();
-        const methodName = (path + (prop as string)).replace(/^\./, '');
+        const methodName = (path + (prop as string));
 
         const [fetchUrl, fetchOpts] = (
           canMakeGetRequest(url, methodName, input)
@@ -99,6 +101,8 @@ export const createClient = <T extends ServerServiceType>({ url, fetch = globalF
         const log = (parsed: any) => logger?.({
           url: fetchUrl as string,
           options: fetchOptions as RequestInit,
+          methodName,
+          input,
           response,
           ok: response.ok,
           startTime,
@@ -108,12 +112,14 @@ export const createClient = <T extends ServerServiceType>({ url, fetch = globalF
         if (!response.ok) {
           const error = await response.json();
 
-          log(error);
-
           if (error?.error?.type && error?.error?.message) {
-            throw new RPCError(error.error.type, error.error.message, response.status);
+            const e = new RPCError(error.error.type, error.error.message, response.status);
+            log(e);
+            throw e;
           } else {
-            throw new Error(error);
+            const ex = new Error(error);
+            log(ex);
+            throw ex;
           }
         }
 

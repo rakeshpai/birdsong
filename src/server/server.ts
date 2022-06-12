@@ -7,10 +7,7 @@ import type { Environment, EnvironmentHelpers } from './environments/helpers';
 
 type EnvHelpers = Pick<EnvironmentHelpers, 'setCookie' | 'readCookie' | 'clearCookie'>;
 
-type ResolverArgs<Input extends RPCSerializableValue> = [
-  input: Input,
-  helpers: EnvHelpers
-];
+type ResolverArgs<Input extends RPCSerializableValue> = [input: Input, helpers: EnvHelpers];
 
 type Resolver<
   Input extends RPCSerializableValue,
@@ -35,24 +32,14 @@ const method = (): Method => (validator, resolver) => ({ validator, resolver });
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
   | { type: 'error-parse-method-details'; error: unknown }
-
   | { type: 'method-description'; methodName: string | null; input: any }
-
   | { type: 'error-method-not-found'; methodName: string | null; input: any }
-
+  | { type: 'error-method-not-specified'; input: any }
   | { type: 'error-validate-input'; input: any; error: unknown }
-  | {
-    type: 'error-resolve-method-rpc'; input: any; validatedInput: any; error: unknown;
-  }
-  | {
-    type: 'error-resolve-method-unknown'; input: any; validatedInput: any; error: unknown;
-  }
-  | {
-    type: 'method-output'; input: any; validatedInput: any; output: any;
-  }
-  | {
-    type: 'validation-passed'; methodName: string; input: any; validatedInput: any;
-  };
+  | { type: 'error-resolve-method-rpc'; input: any; validatedInput: any; error: unknown }
+  | { type: 'error-resolve-method-unknown'; input: any; validatedInput: any; error: unknown }
+  | { type: 'method-output'; input: any; validatedInput: any; output: any }
+  | { type: 'validation-passed'; methodName: string; input: any; validatedInput: any };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 type ServerOptionsBase = {
@@ -111,9 +98,7 @@ const httpServer = <
     let current = methods;
 
     while (index < path.length) {
-      if (current[path[index]] === undefined) {
-        return undefined;
-      }
+      if (current[path[index]] === undefined) return undefined;
       current = current[path[index]];
       index += 1;
     }
@@ -145,8 +130,8 @@ const httpServer = <
       options.logger?.({ type: 'method-description', methodName, input });
 
       if (methodName === null) {
-        options.logger?.({ type: 'error-method-not-found', methodName, input });
-        return sendError(methodNotFound(`Method not found: ${methodName}`));
+        options.logger?.({ type: 'error-method-not-specified', input });
+        return sendError(methodNotFound('Method not specified'));
       }
 
       const method = getMethod(methodName);
