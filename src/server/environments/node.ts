@@ -3,7 +3,6 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import cookie from 'cookie';
 import { parse as urlParse } from 'url';
 import type { EnvironmentHelpers } from './helpers';
-import { getMethodDetails } from './helpers';
 import type { RPCError } from '../../shared/error';
 
 const nodejs = (request: IncomingMessage, response: ServerResponse): EnvironmentHelpers => {
@@ -47,15 +46,6 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
     }));
   };
 
-  const methodDetails = () => getMethodDetails(
-    request.method || 'GET',
-    {
-      name: searchParams.method as string | null,
-      input: searchParams.input as string | null
-    },
-    postBody
-  );
-
   const setHeader = (name: string, value: string) => {
     response.setHeader(name, value);
   };
@@ -63,14 +53,19 @@ const nodejs = (request: IncomingMessage, response: ServerResponse): Environment
   const getHeader = (name: string): string | undefined => request.headers[name] as string | undefined;
 
   return {
+    httpMethod: request.method,
+    methodDetailsIfGet: () => ({
+      name: searchParams.method as string | undefined,
+      input: searchParams.input as string | undefined
+    }),
+    postBody,
     setCookie,
     readCookie,
     clearCookie,
     setHeader,
     getHeader,
     sendResponse,
-    sendError,
-    methodDetails
+    sendError
   };
 };
 

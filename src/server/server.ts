@@ -4,6 +4,9 @@ import type { RPCError } from '../shared/error';
 import { isRPCError } from '../shared/is-error';
 import { badRequest, internalServerError, methodNotFound } from '../shared/error-creators';
 import type { Environment, EnvironmentHelpers } from './environments/helpers';
+import { getMethodDetails } from './environments/helpers';
+import type { Middleware, MiddlewareLike } from './middleware';
+import { toMiddlewareList } from './middleware';
 
 type EnvHelpers = Pick<EnvironmentHelpers, 'setCookie' | 'readCookie' | 'clearCookie'>;
 
@@ -13,15 +16,6 @@ type Resolver<
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue
 > = (...args: ResolverArgs<Input>) => MaybeAsync<Output>;
-
-type MiddlewareOptions<InContext, OutContext> = EnvironmentHelpers & {
-  context: InContext;
-  next: (context: OutContext) => Promise<void>;
-};
-
-type Middleware<InContext, OutContext> = (
-  options: MiddlewareOptions<InContext, OutContext>
-) => Promise<void>;
 
 type ServiceMethodDescriptor<
   Input extends RPCSerializableValue,
@@ -36,14 +30,6 @@ export type Method = <Input extends RPCSerializableValue, Output extends RPCSeri
   validator: Validator<Input>,
   resolver: Resolver<Input, Output>
 ) => ServiceMethodDescriptor<Input, Output>;
-
-type MiddlewareLike = Middleware<any, any> | undefined | (Middleware<any, any> | undefined)[];
-
-const exists = <T>(x: T | undefined): x is T => !!x;
-const toMiddlewareList = (m: MiddlewareLike): Middleware<any, any>[] => {
-  if (!m) return [];
-  return (Array.isArray(m) ? m : [m]).filter(exists);
-};
 
 function method<Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
   validator: Validator<Input>,
@@ -153,21 +139,38 @@ const httpServer = <
     return current as unknown as ServiceMethodDescriptor<any, any>;
   };
 
+  const methodDetails = (env: EnvironmentHelpers) => {
+    let methodDetailsCache: MaybeAsync<{
+      name: string | null;
+      input: unknown;
+    }>;
+
+    return () => {
+      if (!methodDetailsCache) {
+        methodDetailsCache = getMethodDetails(
+          env.httpMethod,
+          env.methodDetailsIfGet,
+          env.postBody
+        );
+      }
+
+      return methodDetailsCache;
+    };
+  };
+
   return {
     server: async (...args: RuntimeArgs) => {
       const env = options.environment(...args);
       const {
-        setCookie, readCookie, clearCookie, methodDetails,
-        sendError, sendResponse, setHeader
+        setCookie, readCookie, clearCookie, sendError, sendResponse, setHeader
       } = env;
 
-      let md: {
-        name: string | null;
-        input: unknown;
-      };
+      const mDetails = methodDetails(env);
+
+      let md: Awaited<ReturnType<typeof mDetails>>;
       try {
         // eslint-disable-next-line prefer-const
-        md = await methodDetails();
+        md = await mDetails();
       } catch (e) {
         options.logger?.({ type: 'error-parse-method-details', error: e });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
