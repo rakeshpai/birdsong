@@ -14,10 +14,20 @@ type Resolver<
   Output extends RPCSerializableValue
 > = (...args: ResolverArgs<Input>) => MaybeAsync<Output>;
 
+type MiddlewareOptions<InContext, OutContext> = EnvironmentHelpers & {
+  context: InContext;
+  next: (context: OutContext) => Promise<void>;
+};
+
+type Middleware<InContext, OutContext> = (
+  options: MiddlewareOptions<InContext, OutContext>
+) => Promise<void>;
+
 type ServiceMethodDescriptor<
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue
 > = {
+  middleware: Middleware<any, any>[];
   validator: Validator<Input>;
   resolver: Resolver<Input, Output>;
 };
@@ -27,7 +37,44 @@ export type Method = <Input extends RPCSerializableValue, Output extends RPCSeri
   resolver: Resolver<Input, Output>
 ) => ServiceMethodDescriptor<Input, Output>;
 
-const method = (): Method => (validator, resolver) => ({ validator, resolver });
+type MiddlewareLike = Middleware<any, any> | undefined | (Middleware<any, any> | undefined)[];
+
+const exists = <T>(x: T | undefined): x is T => !!x;
+const toMiddlewareList = (m: MiddlewareLike): Middleware<any, any>[] => {
+  if (!m) return [];
+  return (Array.isArray(m) ? m : [m]).filter(exists);
+};
+
+function method<Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+  validator: Validator<Input>,
+  resolver: Resolver<Input, Output>
+): ServiceMethodDescriptor<Input, Input>;
+function method<Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+  middleware: MiddlewareLike,
+  validator: Validator<Input>,
+  resolver?: Resolver<Input, Output>
+): ServiceMethodDescriptor<Input, Output>;
+function method<Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+  middlewareOrValidator: Validator<Input> | MiddlewareLike,
+  validatorOrResolver: Validator<Input> | Resolver<Input, Output>,
+  maybeResolver?: Resolver<Input, Output>
+): ServiceMethodDescriptor<Input, Output> {
+  if (maybeResolver) {
+    return {
+      middleware: toMiddlewareList(middlewareOrValidator as MiddlewareLike),
+      validator: validatorOrResolver as Validator<Input>,
+      resolver: maybeResolver
+    };
+  }
+
+  return {
+    middleware: toMiddlewareList(middlewareOrValidator as MiddlewareLike),
+    validator: middlewareOrValidator as Validator<Input>,
+    resolver: validatorOrResolver as Resolver<Input, Output>
+  };
+}
+
+// const method: Method = (validator, resolver) => ({ validator, resolver });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
@@ -41,10 +88,6 @@ export type LogLine =
   | { type: 'method-output'; input: any; validatedInput: any; output: any }
   | { type: 'validation-passed'; methodName: string; input: any; validatedInput: any };
 /* eslint-enable @typescript-eslint/no-explicit-any */
-
-type ServerOptionsBase = {
-  logger?: (log: LogLine) => void;
-};
 
 type Service<TService> = (
   TService extends {
@@ -62,6 +105,10 @@ type Service<TService> = (
 );
 
 export type Methods<TService> = (method: Method) => Service<TService>;
+
+type ServerOptionsBase = {
+  logger?: (log: LogLine) => void;
+};
 
 type ServerOptions<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,7 +129,7 @@ const httpServer = <
 >(
   options: ServerOptions<TService, RuntimeArgs>
 ) => {
-  const methods = options.service(method());
+  const methods = options.service(method);
 
   type MethodsClientType<TS> = Readonly<{
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
