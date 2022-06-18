@@ -1,11 +1,11 @@
 import type { MaybeAsync, RPCSerializableValue, Validator } from '../shared/types';
 import { encode } from '../shared/type-handlers';
-import type { RPCError } from '../shared/error';
 import { isRPCError } from '../shared/is-error';
 import { badRequest, internalServerError, methodNotFound } from '../shared/error-creators';
-import type { Environment, EnvironmentHelpers } from './environments/helpers';
+import type { Environment, NextOptions } from './helpers';
+import { methodDetails, errorResponse } from './helpers';
 
-type EnvHelpers = Pick<EnvironmentHelpers, 'setCookie' | 'readCookie' | 'clearCookie'>;
+type EnvHelpers = NextOptions<any>;
 
 type ResolverArgs<Input extends RPCSerializableValue> = [input: Input, helpers: EnvHelpers];
 
@@ -108,81 +108,70 @@ const httpServer = <
 
   return {
     server: async (...args: RuntimeArgs) => {
-      const env = options.environment(...args);
-      const {
-        setCookie, readCookie, clearCookie, methodDetails,
-        sendError, sendResponse, setHeader
-      } = env;
+      options.environment(...args)(async ({ request, ...rest }) => {
+        let md;
 
-      let md: {
-        name: string | null;
-        input: unknown;
-      };
-      try {
-        // eslint-disable-next-line prefer-const
-        md = await methodDetails();
-      } catch (e) {
-        options.logger?.({ type: 'error-parse-method-details', error: e });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return sendError(e as RPCError<any>);
-      }
-      const { name: methodName, input } = md;
-      options.logger?.({ type: 'method-description', methodName, input });
-
-      if (methodName === null) {
-        options.logger?.({ type: 'error-method-not-specified', input });
-        return sendError(methodNotFound('Method not specified'));
-      }
-
-      const method = getMethod(methodName);
-
-      if (!method) {
-        options.logger?.({ type: 'error-method-not-found', methodName, input });
-        return sendError(methodNotFound(`Method not found: ${methodName}`));
-      }
-
-      let validatedInput: RPCSerializableValue;
-      try {
-        // eslint-disable-next-line prefer-const
-        validatedInput = await method.validator(input);
-      } catch (e) {
-        options.logger?.({ type: 'error-validate-input', input, error: e });
-        return sendError(badRequest((e as Error).message));
-      }
-
-      options.logger?.({
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        type: 'validation-passed', methodName: methodName!, input, validatedInput
-      });
-
-      let output: RPCSerializableValue;
-      try {
-        // eslint-disable-next-line prefer-const
-        output = await (
-          method.resolver(validatedInput, {
-            setCookie,
-            readCookie,
-            clearCookie
-          })
-        );
-      } catch (e) {
-        if (isRPCError(e)) {
-          options.logger?.({
-            type: 'error-resolve-method-rpc', input, validatedInput, error: e
-          });
-          return sendError(e);
+        try {
+          // eslint-disable-next-line prefer-const
+          md = await methodDetails(request);
+        } catch (e) {
+          options.logger?.({ type: 'error-parse-method-details', error: e });
+          return errorResponse(e);
         }
-        options.logger?.({
-          type: 'error-resolve-method-unknown', input, validatedInput, error: e
-        });
-        return sendError(internalServerError('Internal server error'));
-      }
 
-      options.logger?.({
-        type: 'method-output', input, validatedInput, output
+        const method = getMethod(md.method);
+
+        if (!method) {
+          options.logger?.({ type: 'error-method-not-found', methodName: md.method, input: md.input });
+          return errorResponse(methodNotFound(`Method not found: ${md.method}`));
+        }
+
+        let validatedInput: RPCSerializableValue;
+        try {
+          // eslint-disable-next-line prefer-const
+          validatedInput = await method.validator(md.input);
+        } catch (e) {
+          options.logger?.({ type: 'error-validate-input', input: md.input, error: e });
+          return errorResponse(badRequest((e as Error).message));
+        }
+
+        options.logger?.({
+          type: 'validation-passed', methodName: md.method, input: md.input, validatedInput
+        });
+
+        let output: RPCSerializableValue;
+        try {
+          // eslint-disable-next-line prefer-const
+          output = await (
+            method.resolver(validatedInput, { request, ...rest })
+          );
+        } catch (e) {
+          if (isRPCError(e)) {
+            options.logger?.({
+              type: 'error-resolve-method-rpc', input: md.input, validatedInput, error: e
+            });
+            return errorResponse(e);
+          }
+          options.logger?.({
+            type: 'error-resolve-method-unknown', input: md.input, validatedInput, error: e
+          });
+          return errorResponse(internalServerError('Internal server error'));
+        }
+
+        options.logger?.({
+          type: 'method-output', input: md.input, validatedInput, output
+        });
+
+        return new Response(
+          encode(output),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
       });
-      setHeader('Content-Type', 'application/json');
-      sendResponse(encode(output));
     },
     clientStub: {} as MethodsClientType<TService>
   };

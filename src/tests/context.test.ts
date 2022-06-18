@@ -1,11 +1,10 @@
-/* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/no-redeclare */
 import { expect, it } from 'vitest';
 import http from 'http';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
 import httpServer from '../server/server';
-import nodejs from '../server/environments/node';
+import nodejs from '../server/environments/nodejs';
 import { createClient } from '../client/client';
 import type { Logger } from '../client/client';
 

@@ -11,13 +11,9 @@
       "import": "./dist/client/index.es.js",
       "require": "./dist/client/index.umd.js"
     },
-    "./server/environments/node": {
-      "import": "./dist/server/esm/src/server/environments/node.js",
-      "require": "./dist/server/cjs/src/server/environments/node.js"
-    },
-    "./server/environments": {
-      "import": "./dist/server/esm/src/server/environments/helpers.js",
-      "require": "./dist/server/cjs/src/server/environments/helpers.js"
+    "./server/environments/nodejs": {
+      "import": "./dist/server/esm/src/server/environments/nodejs.js",
+      "require": "./dist/server/cjs/src/server/environments/nodejs.js"
     },
     "./server": {
       "import": "./dist/server/esm/src/server/index.js",
@@ -29,11 +25,8 @@
       "server": [
         "./dist/server/esm/src/server/index.d.ts"
       ],
-      "server/environments/node": [
-        "./dist/server/esm/src/server/environments/node.d.ts"
-      ],
-      "server/environments": [
-        "./dist/server/esm/src/server/environments/helpers.d.ts"
+      "server/environments/nodejs": [
+        "./dist/server/esm/src/server/environments/nodejs.d.ts"
       ],
       "client": [
         "./dist/client/index.d.ts"
@@ -62,6 +55,7 @@
     "@types/node-fetch": "^2.6.1",
     "c8": "^7.11.3",
     "eslint-config-rakeshpai": "^1.0.4",
+    "get-port": "^6.1.2",
     "node-fetch": "^2.6.7",
     "ts-expect": "^1.3.0",
     "ts-node": "^10.7.0",

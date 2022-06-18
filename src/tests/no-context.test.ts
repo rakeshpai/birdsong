@@ -1,13 +1,13 @@
-/* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/no-redeclare */
 import { it, expect } from 'vitest';
 import { expectType } from 'ts-expect';
 import http from 'http';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
+import getPort from 'get-port';
 import type { Methods } from '../server/server';
 import httpServer, { noInput } from '../server/server';
-import node from '../server/environments/node';
+import node from '../server/environments/nodejs';
 import type { Logger } from '../client/client';
 import { createClient } from '../client/client';
 import { RPCError } from '../shared/error';
@@ -46,21 +46,27 @@ const setup = async <Service extends Record<string, any>>(
     service: methods
   });
 
+  const port = await getPort();
+
   const server: http.Server = await new Promise(resolve => {
     const s = http.createServer((req, res) => {
       if (req.url?.startsWith('/api')) return rpcServer(req, res);
     });
-    s.listen(4951, () => { resolve(s); });
+    s.listen(port, () => { resolve(s); });
   });
 
   const log: Parameters<Logger>[0][] = [];
   const client = createClient<typeof clientStub>({
-    url: 'http://localhost:4951/api',
+    url: `http://localhost:${port}/api`,
     fetch: fetch as unknown as FetchType,
     logger: l => log.push(l)
   });
 
-  return { stopServer: () => server.close(), client, log };
+  return {
+    stopServer: () => new Promise(resolve => { server.close(resolve); }),
+    client,
+    log
+  };
 };
 
 it('should make an rpc call (get + all the types)', async () => {
@@ -100,7 +106,7 @@ it('should make an rpc call (get + all the types)', async () => {
   expect(log.length).toBe(1);
   expect(log[0].options.method?.toLowerCase()).toBe('get');
 
-  stopServer();
+  await stopServer();
 });
 
 it('should make another rpc call (array get)', async () => {
@@ -115,7 +121,7 @@ it('should make another rpc call (array get)', async () => {
   expectType<string[]>(result);
   expect(result).toMatchSnapshot();
 
-  stopServer();
+  await stopServer();
 });
 
 it('should make yet another rpc call (post)', async () => {
@@ -133,7 +139,7 @@ it('should make yet another rpc call (post)', async () => {
   expect(log.length).toBe(1);
   expect(log[0].options.method?.toLowerCase()).toBe('post');
 
-  stopServer();
+  await stopServer();
 });
 
 it('should throw in case of http error', async () => {
@@ -159,7 +165,7 @@ it('should throw in case of http error', async () => {
     }
   }
 
-  stopServer();
+  await stopServer();
 });
 
 it('should set a cookie', async () => {
@@ -176,10 +182,10 @@ it('should set a cookie', async () => {
   await client.login({ username: 'john', password: 'doe' });
   expect(log.length).toBe(1);
   expect((log[0].response as unknown as Response).headers.raw()['set-cookie']).toEqual([
-    'token=123456'
+    'token=123456; HttpOnly'
   ]);
 
-  stopServer();
+  await stopServer();
 });
 
 it('should throw without details if server throws', async () => {
@@ -203,7 +209,7 @@ it('should throw without details if server throws', async () => {
     }
   }
 
-  stopServer();
+  await stopServer();
 });
 
 it('should receive client-side error in case of validation error', async () => {
@@ -228,7 +234,7 @@ it('should receive client-side error in case of validation error', async () => {
     }
   }
 
-  stopServer();
+  await stopServer();
 });
 
 it('should abort if a abort signal is received', async () => {
@@ -256,7 +262,7 @@ it('should abort if a abort signal is received', async () => {
     }
   }
 
-  stopServer();
+  await stopServer();
 });
 
 it('should make calls with nested objects', async () => {
@@ -321,5 +327,5 @@ it('should make calls with nested objects', async () => {
   expectType<string>(result5);
   expect(result5).toBe('bare called');
 
-  stopServer();
+  await stopServer();
 });
