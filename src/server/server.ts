@@ -2,30 +2,33 @@ import type { MaybeAsync, RPCSerializableValue, Validator } from '../shared/type
 import { encode } from '../shared/type-handlers';
 import { isRPCError } from '../shared/is-error';
 import { badRequest, internalServerError, methodNotFound } from '../shared/error-creators';
-import type { Environment, NextOptions } from './helpers';
+import type { ContextBase, Environment, NextOptions } from './helpers';
 import { methodDetails, errorResponse } from './helpers';
 
-type EnvHelpers = NextOptions<any>;
+type MethodHelpers<Context extends ContextBase> = NextOptions<Context>;
 
-type ResolverArgs<Input extends RPCSerializableValue> = [input: Input, helpers: EnvHelpers];
+type ResolverArgs<Input extends RPCSerializableValue, Context extends ContextBase> =
+  [input: Input, helpers: MethodHelpers<Context>];
 
 type Resolver<
   Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue
-> = (...args: ResolverArgs<Input>) => MaybeAsync<Output>;
+  Output extends RPCSerializableValue,
+  Context extends ContextBase
+> = (...args: ResolverArgs<Input, Context>) => MaybeAsync<Output>;
 
 type ServiceMethodDescriptor<
   Input extends RPCSerializableValue,
-  Output extends RPCSerializableValue
+  Output extends RPCSerializableValue,
+  Context extends ContextBase
 > = {
   validator: Validator<Input>;
-  resolver: Resolver<Input, Output>;
+  resolver: Resolver<Input, Output, Context>;
 };
 
-export type Method = <Input extends RPCSerializableValue, Output extends RPCSerializableValue>(
+export type Method = <Input extends RPCSerializableValue, Output extends RPCSerializableValue, Context extends ContextBase>(
   validator: Validator<Input>,
-  resolver: Resolver<Input, Output>
-) => ServiceMethodDescriptor<Input, Output>;
+  resolver: Resolver<Input, Output, Context>
+) => ServiceMethodDescriptor<Input, Output, Context>;
 
 const method = (): Method => (validator, resolver) => ({ validator, resolver });
 
@@ -49,9 +52,9 @@ type ServerOptionsBase = {
 type Service<TService> = (
   TService extends {
     [methodName in keyof TService]: TService[methodName] extends ServiceMethodDescriptor<
-      infer Input, infer Output
+      infer Input, infer Output, infer Context
     >
-      ? ServiceMethodDescriptor<Input, Output>
+      ? ServiceMethodDescriptor<Input, Output, Context>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       : TService[methodName] extends Service<any>
         ? Service<TService[methodName]>
@@ -65,7 +68,7 @@ export type Methods<TService> = (method: Method) => Service<TService>;
 
 type ServerOptions<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TService extends Record<string, ServiceMethodDescriptor<any, any> | Service<any>>,
+  TService extends Record<string, ServiceMethodDescriptor<any, any, any> | Service<any>>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RuntimeArgs extends any[]
 > =
@@ -76,7 +79,7 @@ type ServerOptions<
 
 const httpServer = <
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TService extends Record<string, ServiceMethodDescriptor<any, any> | Service<any>>,
+  TService extends Record<string, ServiceMethodDescriptor<any, any, any> | Service<any>>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RuntimeArgs extends any[]
 >(
@@ -86,7 +89,7 @@ const httpServer = <
 
   type MethodsClientType<TS> = Readonly<{
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key in keyof TS]: TS[key] extends ServiceMethodDescriptor<any, any>
+    [key in keyof TS]: TS[key] extends ServiceMethodDescriptor<any, any, any>
       ? (input: Awaited<ReturnType<TS[key]['validator']>>)
       => Promise<Awaited<ReturnType<TS[key]['resolver']>>>
       : MethodsClientType<TS[key]>
@@ -103,11 +106,11 @@ const httpServer = <
       index += 1;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return current as unknown as ServiceMethodDescriptor<any, any>;
+    return current as unknown as ServiceMethodDescriptor<any, any, any>;
   };
 
   return {
-    server: async (...args: RuntimeArgs) => {
+    server: async (...args: RuntimeArgs) => (
       options.environment(...args)(async ({ request, ...rest }) => {
         let md;
 
@@ -143,7 +146,7 @@ const httpServer = <
         try {
           // eslint-disable-next-line prefer-const
           output = await (
-            method.resolver(validatedInput, { request, ...rest })
+            method.resolver(validatedInput, { request, context: {} as const, ...rest })
           );
         } catch (e) {
           if (isRPCError(e)) {
@@ -162,17 +165,12 @@ const httpServer = <
           type: 'method-output', input: md.input, validatedInput, output
         });
 
-        return new Response(
-          encode(output),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      });
-    },
+        return new Response(encode(output), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    ),
     clientStub: {} as MethodsClientType<TService>
   };
 };

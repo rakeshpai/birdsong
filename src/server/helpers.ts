@@ -4,21 +4,24 @@ import { decode } from '../shared/type-handlers';
 import { isRPCError } from '../shared/is-error';
 import { badRequest, noMethodSpecified } from '../shared/error-creators';
 
-export type NextOptions<Context extends Record<string, unknown>> = {
+export type ContextBase<T extends { [key in keyof T]: T[key] } = Record<string, never>> = T;
+
+export type NextOptions<Context extends ContextBase> = {
   request: Request;
   cookies: Record<string, string>;
   setCookie: (name: string, value: string, options?: CookieSerializeOptions) => void;
+  deleteCookie: (name: string, options?: CookieSerializeOptions) => void;
   context: Context;
 };
 
-export type RequestHandler<Context extends Record<string, unknown>> = {
-  (next: (nextOptions: NextOptions<Context>) => MaybeAsync<Response>): Promise<void>;
+export type RequestHandler = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (next: (nextOptions: Omit<NextOptions<any>, 'context'>) => MaybeAsync<Response>): Promise<void>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Environment<EnvironmentArgs extends any[]> = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (...args: EnvironmentArgs) => RequestHandler<any>
+  (...args: EnvironmentArgs) => RequestHandler
 );
 
 const isGettable = (methodName: string) => (

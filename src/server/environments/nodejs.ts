@@ -90,19 +90,22 @@ const writeResponse = (response: Response, res: ServerResponse): Promise<void> =
   }
 });
 
-export default (nodeRequest: IncomingMessage, nodeResponse: ServerResponse): RequestHandler<Record<string, unknown>> => (
+export default (nodeRequest: IncomingMessage, nodeResponse: ServerResponse): RequestHandler => (
   async next => {
     const cookieJar: string[] = [];
     const cookies = cookie.parse(nodeRequest.headers.cookie || '');
 
     const request = await convertNodeRequest(nodeRequest);
+    const setCookie = (name: string, value: string, options: cookie.CookieSerializeOptions | undefined): void => {
+      cookieJar.push(cookie.serialize(name, value, options));
+    };
     const response = await next({
       request,
       cookies,
-      setCookie: (name, value, options) => {
-        cookieJar.push(cookie.serialize(name, value, options));
-      },
-      context: {}
+      setCookie,
+      deleteCookie: (name: string, options: cookie.CookieSerializeOptions | undefined) => {
+        setCookie(name, '', { ...options, maxAge: 0 });
+      }
     });
 
     cookieJar.forEach(cookie => nodeResponse.setHeader('Set-Cookie', cookie));
