@@ -1,9 +1,9 @@
 /// <reference types="node" />
-import type { IncomingMessage, OutgoingHttpHeaders, ServerResponse } from 'http';
+import type { IncomingMessage, OutgoingHttpHeaders, ServerResponse } from 'node:http';
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 import { ReadableStream } from 'node:stream/web';
 import cookie from 'cookie';
-import type { RequestHandler } from '../helpers';
+import type { RequestHandler } from '../types';
 
 // Adapted from https://github.com/cloudflare/miniflare/blob/master/packages/http-server
 

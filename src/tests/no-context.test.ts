@@ -5,17 +5,17 @@ import http from 'http';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
 import getPort from 'get-port';
-import type { Methods } from '../server/server';
 import httpServer, { noInput } from '../server/server';
 import node from '../server/environments/nodejs';
 import type { Logger } from '../client/client';
 import { createClient } from '../client/client';
 import { RPCError } from '../shared/error';
 import {
-  isBadRequest,
+  isCouldntParseRequest,
   isInternalServerError, isRPCError, isUnauthorized
 } from '../shared/is-error';
 import { couldntParseRequest, unauthorized } from '../shared/error-creators';
+import type { Methods } from '../server/types';
 
 it('should throw if server can\'t be reached', async () => {
   type DummyClientStub = {
@@ -225,11 +225,11 @@ it('should receive client-side error in case of validation error', async () => {
   try {
     await client.validationFails(undefined as never);
   } catch (e) {
-    expect(isBadRequest(e)).toBe(true);
+    expect(isCouldntParseRequest(e)).toBe(true);
     expect(isRPCError(e)).toBe(true);
     if (e instanceof RPCError) {
       expect(e.message).toEqual('boo!');
-      expect(e.type).toEqual('BadRequest');
+      expect(e.type).toEqual('CouldntParseRequest');
       expect(e.statusCode).toBe(400);
     }
   }

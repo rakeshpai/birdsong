@@ -1,28 +1,6 @@
-import type { CookieSerializeOptions } from 'cookie';
-import type { MaybeAsync } from '../client';
 import { decode } from '../shared/type-handlers';
 import { isRPCError } from '../shared/is-error';
 import { badRequest, noMethodSpecified } from '../shared/error-creators';
-
-export type ContextBase<T extends { [key in keyof T]: T[key] } = Record<string, never>> = T;
-
-export type NextOptions<Context extends ContextBase> = {
-  request: Request;
-  cookies: Record<string, string>;
-  setCookie: (name: string, value: string, options?: CookieSerializeOptions) => void;
-  deleteCookie: (name: string, options?: CookieSerializeOptions) => void;
-  context: Context;
-};
-
-export type RequestHandler = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (next: (nextOptions: Omit<NextOptions<any>, 'context'>) => MaybeAsync<Response>): Promise<void>;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Environment<EnvironmentArgs extends any[]> = (
-  (...args: EnvironmentArgs) => RequestHandler
-);
 
 const isGettable = (methodName: string) => (
   methodName.startsWith('get')
