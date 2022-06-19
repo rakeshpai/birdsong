@@ -1,6 +1,9 @@
-import type { ServerOptions, Service, ServiceMethodDescriptor } from './types';
-import { method } from './types';
+import type {
+  Method, ServerOptions, Service, ServiceMethodDescriptor
+} from './types';
 import processMethod from './process-method';
+
+export const method: Method = (validator, resolver) => ({ validator, resolver });
 
 const httpServer = <
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,7 +39,10 @@ const httpServer = <
 
   return {
     server: async (...args: RuntimeArgs) => options.environment(...args)(
-      processMethod({ getMethod, logger: options.logger })
+      opts => {
+        const next = processMethod({ getMethod, logger: options.logger });
+        return next({ ...opts, context: {} });
+      }
     ),
     clientStub: {} as MethodsClientType<TService>
   };

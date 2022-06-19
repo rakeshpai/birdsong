@@ -4,7 +4,7 @@ import type { MaybeAsync } from '../shared/types';
 import { isRPCError } from '../shared/is-error';
 import { errorResponse, methodDetails } from './helpers';
 import type {
-  ContextBase, LogLine, NextOptionsBase, ServiceMethodDescriptor
+  ContextBase, LogLine, NextOptions, ServiceMethodDescriptor
 } from './types';
 
 const asyncTryCatch = async <T>(fn: () => MaybeAsync<T>, c?: (e: unknown) => MaybeAsync<T>): Promise<T> => {
@@ -16,16 +16,16 @@ const asyncTryCatch = async <T>(fn: () => MaybeAsync<T>, c?: (e: unknown) => May
   }
 };
 
-const processMethod = <Context extends ContextBase>({ getMethod, logger }: {
+const processMethod = ({ getMethod, logger }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getMethod: (n: string) => ServiceMethodDescriptor<any, any, Context> | undefined;
+  getMethod: (n: string) => ServiceMethodDescriptor<any, any, any> | undefined;
   logger?: (log: LogLine) => void;
 }) => (
-  async ({ request, ...rest }: NextOptionsBase) => asyncTryCatch(async () => {
+  async <Context extends ContextBase>({ request, ...rest }: NextOptions<Context>) => asyncTryCatch(async () => {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     const log = logger || (() => {});
 
-    const md = await asyncTryCatch(
+    const { method: methodName, input } = await asyncTryCatch(
       () => methodDetails(request),
       e => {
         log({ type: 'error-parse-method-details', error: e });
@@ -33,46 +33,42 @@ const processMethod = <Context extends ContextBase>({ getMethod, logger }: {
       }
     );
 
-    const method = getMethod(md.method);
+    const method = getMethod(methodName);
 
     if (!method) {
-      log({ type: 'error-method-not-found', methodName: md.method, input: md.input });
-      throw methodNotFound(`Method not found: ${md.method}`);
+      log({ type: 'error-method-not-found', methodName, input });
+      throw methodNotFound(`Method not found: ${method}`);
     }
 
-    log({ type: 'method-description', methodName: md.method, input: md.input });
+    log({ type: 'method-description', methodName, input });
 
     const validatedInput = await asyncTryCatch(
-      () => method.validator(md.input),
+      () => method.validator(input),
       e => {
-        log({ type: 'error-validate-input', input: md.input, error: e });
+        log({ type: 'error-validate-input', input, error: e });
         throw e;
       }
     );
 
-    log({
-      type: 'validation-passed', methodName: md.method, input: md.input, validatedInput
-    });
+    // eslint-disable-next-line object-curly-newline
+    log({ type: 'validation-passed', methodName, input, validatedInput });
 
     const output = await asyncTryCatch(
-      () => method.resolver(validatedInput, { request, ...rest, context: {} as any }),
+      () => method.resolver(validatedInput, { request, ...rest }),
       e => {
         if (isRPCError(e)) {
-          log({
-            type: 'error-resolve-method-rpc', input: md.input, validatedInput, error: e
-          });
+          // eslint-disable-next-line object-curly-newline
+          log({ type: 'error-resolve-method-rpc', input, validatedInput, error: e });
           throw e;
         }
-        log({
-          type: 'error-resolve-method-unknown', input: md.input, validatedInput, error: e
-        });
+        // eslint-disable-next-line object-curly-newline
+        log({ type: 'error-resolve-method-unknown', input, validatedInput, error: e });
         throw internalServerError('Internal server error');
       }
     );
 
-    log({
-      type: 'method-output', input: md.input, validatedInput, output
-    });
+    // eslint-disable-next-line object-curly-newline
+    log({ type: 'method-output', input, validatedInput, output });
 
     return new Response(encode(output), {
       status: 200,

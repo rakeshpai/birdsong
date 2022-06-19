@@ -46,8 +46,6 @@ export type Method = <Input extends RPCSerializableValue, Output extends RPCSeri
   resolver: Resolver<Input, Output, Context>
 ) => ServiceMethodDescriptor<Input, Output, Context>;
 
-export const method: Method = (validator, resolver) => ({ validator, resolver });
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
   | { type: 'error-parse-method-details'; error: unknown }
