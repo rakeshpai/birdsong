@@ -10,11 +10,16 @@ const createGetUrl = (url: string, method: string, input: RPCSerializableValue) 
   return u.toString();
 };
 
-const canMakeGetRequest = (url: string, method: string, input: RPCSerializableValue) => (
-  (method.startsWith('get')
-    || method.startsWith('list'))
-  && createGetUrl(url, method, input).length < 1000
-);
+const canMakeGetRequest = (url: string, method: string, input: RPCSerializableValue) => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const methodName = method.includes('.') ? method.split('.').pop()! : method;
+
+  return (
+    (methodName.startsWith('get')
+      || methodName.startsWith('list'))
+    && createGetUrl(url, method, input).length < 1000
+  );
+};
 
 const globalFetch = globalThis.fetch;
 const appJson = 'application/json';

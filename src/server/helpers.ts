@@ -2,10 +2,11 @@ import { decode } from '../shared/type-handlers';
 import { isRPCError } from '../shared/is-error';
 import { badRequest, noMethodSpecified } from '../shared/error-creators';
 
-const isGettable = (methodName: string) => (
-  methodName.startsWith('get')
-  || methodName.startsWith('list')
-);
+const isGettable = (methodName: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const method = methodName.includes('.') ? methodName.split('.').pop()! : methodName;
+  return method.startsWith('get') || method.startsWith('list');
+};
 
 const methodDetailsFromUrl = (request: Request) => {
   const url = new URL(request.url);

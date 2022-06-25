@@ -1,13 +1,9 @@
 /* eslint-disable @typescript-eslint/no-redeclare */
 import { it, expect } from 'vitest';
 import { expectType } from 'ts-expect';
-import http from 'http';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
-import getPort from 'get-port';
-import httpServer, { noInput } from '../server/server';
-import node from '../server/environments/nodejs';
-import type { Logger } from '../client/client';
+import { noInput } from '../server/server';
 import { createClient } from '../client/client';
 import { RPCError } from '../shared/error';
 import {
@@ -15,7 +11,8 @@ import {
   isInternalServerError, isRPCError, isUnauthorized
 } from '../shared/is-error';
 import { couldntParseRequest, unauthorized } from '../shared/error-creators';
-import type { Methods } from '../server/types';
+import type { FetchType } from './setup';
+import { setup } from './setup';
 
 it('should throw if server can\'t be reached', async () => {
   type DummyClientStub = {
@@ -34,40 +31,6 @@ it('should throw if server can\'t be reached', async () => {
     expect(e).toBeInstanceOf(Error);
   }
 });
-
-type FetchType = Parameters<typeof createClient>[0]['fetch'];
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const setup = async <Service extends Record<string, any>>(
-  methods: Methods<Service>
-) => {
-  const { server: rpcServer, clientStub } = httpServer({
-    environment: node,
-    service: methods
-  });
-
-  const port = await getPort();
-
-  const server: http.Server = await new Promise(resolve => {
-    const s = http.createServer((req, res) => {
-      if (req.url?.startsWith('/api')) return rpcServer(req, res);
-    });
-    s.listen(port, () => { resolve(s); });
-  });
-
-  const log: Parameters<Logger>[0][] = [];
-  const client = createClient<typeof clientStub>({
-    url: `http://localhost:${port}/api`,
-    fetch: fetch as unknown as FetchType,
-    logger: l => log.push(l)
-  });
-
-  return {
-    stopServer: () => new Promise(resolve => { server.close(resolve); }),
-    client,
-    log
-  };
-};
 
 it('should make an rpc call (get + all the types)', async () => {
   const { client, log, stopServer } = await setup(method => ({
