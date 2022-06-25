@@ -5,9 +5,9 @@ import type {
 import processMethod from './process-method';
 
 export const createMethod: MethodCreator = (validator, resolver) => ({ type: 'method', validator, resolver });
-export const createService = <T>(createKeys: (method: MethodCreator) => Service<T>['keys']): Service<T> => ({
-  type: 'service', keys: createKeys(createMethod)
-});
+export const createService = <T>(createKeys: (method: MethodCreator) => Service<T>['keys']): Service<T> => (
+  { type: 'service', keys: createKeys(createMethod) }
+);
 
 const httpServer = <
   TService extends Record<string, Method<any, any, any> | Service<any>>,
@@ -15,11 +15,7 @@ const httpServer = <
 >(
   options: ServerOptions<TService, RuntimeArgs>
 ) => {
-  const keys = options.service(createMethod);
-  const service = {
-    type: 'service',
-    keys
-  } as Service<typeof keys>;
+  const service = { type: 'service', keys: options.service(createMethod) };
 
   type MethodsClientType<TS> = Readonly<{
     [key in keyof TS]: TS[key] extends Method<any, any, any>

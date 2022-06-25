@@ -2,30 +2,30 @@ import { decode } from '../shared/type-handlers';
 import { isRPCError } from '../shared/is-error';
 import { badRequest, noMethodSpecified } from '../shared/error-creators';
 
-const isGettable = (methodName: string) => {
+const isGettable = (methodPath: string) => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const method = methodName.includes('.') ? methodName.split('.').pop()! : methodName;
-  return method.startsWith('get') || method.startsWith('list');
+  const methodName = methodPath.includes('.') ? methodPath.split('.').pop()! : methodPath;
+  return methodName.startsWith('get') || methodName.startsWith('list');
 };
 
 const methodDetailsFromUrl = (request: Request) => {
   const url = new URL(request.url);
 
-  const method = url.searchParams.get('method');
-  if (!method) { throw noMethodSpecified('Couldn\'t parse method from URL'); }
+  const methodPath = url.searchParams.get('method');
+  if (!methodPath) { throw noMethodSpecified('Couldn\'t parse method from URL'); }
 
   const input = url.searchParams.get('input');
 
-  if (isGettable(method)) {
+  if (isGettable(methodPath)) {
     try {
       const inp = (input ? decode(input) : undefined) as unknown;
-      return { method, input: inp };
+      return { method: methodPath, input: inp };
     } catch (e) {
       throw badRequest(`Couldn't parse input: ${(e as Error).message}`);
     }
   }
 
-  throw noMethodSpecified(`Method ${method} is not allowed as a GET request`);
+  throw noMethodSpecified(`Method ${methodPath} is not allowed as a GET request`);
 };
 
 const methodDetailsFromBody = async (request: Request) => {
@@ -39,13 +39,11 @@ const methodDetailsFromBody = async (request: Request) => {
   return { method: bodyMethod, input: bodyInput as unknown };
 };
 
-export const methodDetails = async (request: Request) => {
-  if (request.method.toLowerCase() === 'get') {
-    return methodDetailsFromUrl(request);
-  }
-
-  return methodDetailsFromBody(request);
-};
+export const methodDetails = async (request: Request) => (
+  request.method.toLowerCase() === 'get'
+    ? methodDetailsFromUrl(request)
+    : methodDetailsFromBody(request)
+);
 
 export const errorResponse = (error: unknown) => {
   if (isRPCError(error)) {

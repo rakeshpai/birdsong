@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-redeclare */
 import { it, expect } from 'vitest';
 import { setup } from './setup';
-import { createService } from '../server';
+import { createService, noInput } from '../server';
 
 it('should work with nested services', async () => {
   const { client, log, stopServer } = await setup(() => ({
@@ -13,7 +13,7 @@ it('should work with nested services', async () => {
     })),
     widgets: createService(method => ({
       listWidgets: method(
-        input => input as void,
+        noInput,
         () => ['w1', 'w2']
       )
     }))

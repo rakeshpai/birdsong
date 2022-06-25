@@ -99,6 +99,7 @@ export default (nodeRequest: IncomingMessage, nodeResponse: ServerResponse): Req
     const setCookie = (name: string, value: string, options: cookie.CookieSerializeOptions | undefined): void => {
       cookieJar.push(cookie.serialize(name, value, options));
     };
+
     const response = await next({
       request,
       cookies,
