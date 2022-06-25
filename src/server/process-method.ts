@@ -4,7 +4,7 @@ import type { MaybeAsync } from '../shared/types';
 import { isRPCError } from '../shared/is-error';
 import { errorResponse, methodDetails } from './helpers';
 import type {
-  ContextBase, LogLine, NextOptions, ServiceMethodDescriptor
+  ContextBase, LogLine, NextOptions, Method
 } from './types';
 
 const asyncTryCatch = async <T>(fn: () => MaybeAsync<T>, c?: (e: unknown) => MaybeAsync<T>): Promise<T> => {
@@ -18,7 +18,7 @@ const asyncTryCatch = async <T>(fn: () => MaybeAsync<T>, c?: (e: unknown) => May
 
 const processMethod = ({ getMethod, logger }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getMethod: (n: string) => ServiceMethodDescriptor<any, any, any> | undefined;
+  getMethod: (n: string) => Method<any, any, any> | undefined;
   logger?: (log: LogLine) => void;
 }) => (
   async <Context extends ContextBase>({ request, ...rest }: NextOptions<Context>) => asyncTryCatch(async () => {

@@ -32,19 +32,20 @@ type Resolver<
   Context extends ContextBase
 > = (...args: ResolverArgs<Input, Context>) => MaybeAsync<Output>;
 
-export type ServiceMethodDescriptor<
+export type Method<
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue,
   Context extends ContextBase
 > = {
+  type: 'method';
   validator: Validator<Input>;
   resolver: Resolver<Input, Output, Context>;
 };
 
-export type Method = <Input extends RPCSerializableValue, Output extends RPCSerializableValue, Context extends ContextBase>(
+export type MethodCreator = <Input extends RPCSerializableValue, Output extends RPCSerializableValue, Context extends ContextBase>(
   validator: Validator<Input>,
   resolver: Resolver<Input, Output, Context>
-) => ServiceMethodDescriptor<Input, Output, Context>;
+) => Method<Input, Output, Context>;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LogLine =
@@ -58,22 +59,24 @@ export type LogLine =
   | { type: 'validation-passed'; methodName: string; input: any; validatedInput: any };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export type Service<TService> = (
-  TService extends {
-    [methodName in keyof TService]: TService[methodName] extends ServiceMethodDescriptor<
+export type Service<Keys> = {
+  type: 'service';
+  keys: Keys extends {
+    [key in keyof Keys]: Keys[key] extends Method<
       infer Input, infer Output, infer Context
     >
-      ? ServiceMethodDescriptor<Input, Output, Context>
+      ? Method<Input, Output, Context>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      : TService[methodName] extends Service<any>
-        ? Service<TService[methodName]>
-        : never
-  }
-    ? TService
-    : never
-);
+      : Keys[key] extends Service<any>
+        ? Keys[key]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        : Keys[key] extends Service<any>['keys']
+          ? Keys[key]
+          : never
+  } ? Keys : never;
+};
 
-export type Methods<TService> = (method: Method) => Service<TService>;
+export type Methods<TService> = (method: MethodCreator) => Service<TService>['keys'];
 
 type ServerOptionsBase = {
   logger?: (log: LogLine) => void;
@@ -81,7 +84,7 @@ type ServerOptionsBase = {
 
 export type ServerOptions<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TService extends Record<string, ServiceMethodDescriptor<any, any, any> | Service<any>>,
+  TService extends Record<string, Method<any, any, any> | Service<any>>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RuntimeArgs extends any[]
 > =
