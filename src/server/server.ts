@@ -1,10 +1,59 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type {
-  MethodCreator, ServerOptions, Service, Method
+  MethodCreator, ServerOptions, Service, Method, Resolver
 } from './types';
 import processMethod from './process-method';
+import type { RPCSerializableValue, Validator } from '../client';
+import type { MiddlewareLike } from './middleware';
+import { combineMiddleware } from './middleware';
 
-export const createMethod: MethodCreator = (validator, resolver) => ({ type: 'method', validator, resolver });
+function createMethod<
+  Input extends RPCSerializableValue,
+  Output extends RPCSerializableValue,
+  Context
+>(
+  validator: Validator<Input>,
+  resolver: Resolver<Input, Output, Context>
+): Method<Input, Input, Context>;
+function createMethod<
+  Input extends RPCSerializableValue,
+  Output extends RPCSerializableValue,
+  Context,
+  InContext = Context
+>(
+  middleware: MiddlewareLike<InContext, Context>,
+  validator: Validator<Input>,
+  resolver?: Resolver<Input, Output, Context>
+): Method<Input, Output, Context>;
+function createMethod<
+  Input extends RPCSerializableValue,
+  Output extends RPCSerializableValue,
+  Context,
+  InContext = Context
+>(
+  middlewareOrValidator: Validator<Input> | MiddlewareLike<InContext, Context>,
+  validatorOrResolver: Validator<Input> | Resolver<Input, Output, Context>,
+  maybeResolver?: Resolver<Input, Output, Context>
+): Method<Input, Output, Context> {
+  if (maybeResolver) {
+    return {
+      type: 'method',
+      middleware: combineMiddleware(middlewareOrValidator as MiddlewareLike<Context, Context>),
+      validator: validatorOrResolver as Validator<Input>,
+      resolver: maybeResolver
+    };
+  }
+
+  return {
+    type: 'method',
+    middleware: undefined,
+    validator: middlewareOrValidator as Validator<Input>,
+    resolver: validatorOrResolver as Resolver<Input, Output, Context>
+  };
+}
+
+// export const createMethod: MethodCreator = (validator, resolver) => ({ type: 'method', validator, resolver });
+
 export const createService = <T>(createKeys: (method: MethodCreator) => Service<T>['keys']): Service<T> => (
   { type: 'service', keys: createKeys(createMethod) }
 );

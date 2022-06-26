@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CookieSerializeOptions } from 'cookie';
 import type { MaybeAsync, RPCSerializableValue, Validator } from '../shared/types';
+import type { Middleware } from './middleware';
 
-export type ContextBase<T extends { [key in keyof T]: T[key] } = Record<string, unknown>> = T;
+// export type ContextBase<T extends { [key in keyof T]: T[key] } = Record<string, unknown>> = T;
+export type ContextBase = any;
 
 export type NextOptionsBase = {
   request: Request;
@@ -26,7 +28,7 @@ type MethodHelpers<Context extends ContextBase> = NextOptions<Context>;
 type ResolverArgs<Input extends RPCSerializableValue, Context extends ContextBase> =
   [input: Input, helpers: MethodHelpers<Context>];
 
-type Resolver<
+export type Resolver<
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue,
   Context extends ContextBase
@@ -35,9 +37,11 @@ type Resolver<
 export type Method<
   Input extends RPCSerializableValue,
   Output extends RPCSerializableValue,
-  Context extends ContextBase
+  Context extends ContextBase,
+  InContext extends ContextBase = Context
 > = {
   type: 'method';
+  middleware: Middleware<InContext, Context> | undefined;
   validator: Validator<Input>;
   resolver: Resolver<Input, Output, Context>;
 };
